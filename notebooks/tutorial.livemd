@@ -1,0 +1,81 @@
+# Tutorial
+
+```elixir
+Mix.install([
+  {:openai_responses, path: "~/src/openai_responses"}
+])
+```
+
+## Introduction
+
+The only setup you need for using the library is to get your OpenAI API token, and if you already have `OPENAI_API_KEY` environment variable set than you can start right away.
+
+```elixir
+alias OpenAI.Responses
+alias OpenAI.Responses.Helpers
+```
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Basic usage
+
+`create/2` requires just two arguments: the name of the model, and the input text:
+
+```elixir
+{:ok, response} = Responses.create("gpt-4o", "Write a haiku about programming")
+```
+
+The `response` is just a map, and you can use helper function to extract information from it:
+
+```elixir
+Helpers.has_refusal?(response)
+```
+
+```elixir
+Helpers.output_text(response)
+```
+
+```elixir
+Helpers.token_usage(response)
+```
+
+A *structured* input can be manually constructed and passed to `create/2`:
+
+```elixir
+input = [
+  %{
+    "role" => "user",
+    "content" => [
+      %{"type" => "input_text", "text" => "What is in this image?"},
+      %{
+        "type" => "input_image",
+        "image_url" => "https://upload.wikimedia.org/wikipedia/commons/d/d2/Three_early_medicine_bottles.jpg"
+      }
+    ]
+  }
+]
+
+{:ok, response} = OpenAI.Responses.create("gpt-4o", input)
+IO.puts Helpers.output_text(response)
+```
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Using built-in tools
+
+The usage of built-in tools can be illustrated by the following example:
+
+```elixir
+{:ok, response_no_tools} = Responses.create("gpt-4o", "What's the weather in San Francisco?")
+IO.puts(Helpers.output_text(response_no_tools))
+```
+
+```elixir
+{:ok, response_with_search} =
+  Responses.create("gpt-4o", "What's the weather in San Francisco?",
+    tools: [%{type: "web_search_preview"}],
+    temperature: 0.7
+  )
+
+IO.puts(Helpers.output_text(response_with_search))
+```
