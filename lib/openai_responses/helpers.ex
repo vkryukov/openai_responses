@@ -6,38 +6,38 @@ defmodule OpenAI.Responses.Helpers do
   with the OpenAI Responses API, including:
   
   - Extracting text and data from responses
-  - Creating structured input messages
+  - Creating structured messages with images
   - Handling response status and errors
   
   See the individual function documentation for usage examples.
   """
   
-  alias OpenAI.Responses.Helpers.InputHelpers
+  alias OpenAI.Responses.Helpers.ImageHelpers
   
   @doc """
-  Creates a structured input message with text and optional images.
+  Creates a structured message with text and optional images.
 
-  Uses the InputHelpers module to create a properly formatted input message
-  for the OpenAI Responses API. See `OpenAI.Responses.Helpers.InputHelpers.create_input_message/3`
+  Uses the ImageHelpers module to create a properly formatted message
+  with text and images for the OpenAI Responses API. See `OpenAI.Responses.Helpers.ImageHelpers.create_message_with_images/3`
   for full documentation.
 
   ## Examples
 
       # Simple text with one image URL
-      iex> input_message = OpenAI.Responses.Helpers.create_input_message("What is in this image?", "https://example.com/image.jpg")
+      iex> input_message = OpenAI.Responses.Helpers.create_message_with_images("What is in this image?", "https://example.com/image.jpg")
       iex> {:ok, response} = OpenAI.Responses.create("gpt-4o", [input_message])
       
       # With a local file
-      iex> input_message = OpenAI.Responses.Helpers.create_input_message("Describe this", "/path/to/image.jpg")
+      iex> input_message = OpenAI.Responses.Helpers.create_message_with_images("Describe this", "/path/to/image.jpg")
       
       # With multiple images and high detail
-      iex> input_message = OpenAI.Responses.Helpers.create_input_message(
+      iex> input_message = OpenAI.Responses.Helpers.create_message_with_images(
       ...>   "Compare these", 
       ...>   ["image1.jpg", "image2.jpg"],
       ...>   detail: "high"
       ...> )
   """
-  defdelegate create_input_message(text, images \\ nil, opts \\ []), to: InputHelpers
+  defdelegate create_message_with_images(text, images \\ nil, opts \\ []), to: ImageHelpers
   
   @doc """
   Extracts the output text from a response.

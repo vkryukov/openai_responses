@@ -1,6 +1,6 @@
-defmodule OpenAI.Responses.Helpers.InputHelpers do
+defmodule OpenAI.Responses.Helpers.ImageHelpers do
   @moduledoc """
-  Helper functions for creating structured input messages for the OpenAI Responses API.
+  Helper functions for creating structured messages with images for the OpenAI Responses API.
   """
 
   @supported_image_extensions [".png", ".jpeg", ".jpg", ".webp", ".gif"]
@@ -13,7 +13,7 @@ defmodule OpenAI.Responses.Helpers.InputHelpers do
   }
 
   @doc """
-  Creates a structured input message with text and images.
+  Creates a structured message with text and images for vision-based models.
 
   ## Parameters
 
@@ -39,16 +39,16 @@ defmodule OpenAI.Responses.Helpers.InputHelpers do
   ## Examples
 
       # Simple text with one image URL
-      iex> create_input_message("What is in this image?", "https://example.com/image.jpg")
+      iex> create_message_with_images("What is in this image?", "https://example.com/image.jpg")
 
       # Text with a local image file
-      iex> create_input_message("Describe this image", "/path/to/image.jpg")
+      iex> create_message_with_images("Describe this image", "/path/to/image.jpg")
 
       # Using high detail for all images
-      iex> create_input_message("Analyze in detail", ["img1.jpg", "img2.jpg"], detail: "high")
+      iex> create_message_with_images("Analyze in detail", ["img1.jpg", "img2.jpg"], detail: "high")
 
       # Mixed image sources with specific detail levels
-      iex> create_input_message(
+      iex> create_message_with_images(
       ...>   "Compare these", 
       ...>   [
       ...>     {"img1.jpg", "low"},
@@ -57,10 +57,10 @@ defmodule OpenAI.Responses.Helpers.InputHelpers do
       ...> )
 
       # Text-only message
-      iex> create_input_message("Just a text question")
+      iex> create_message_with_images("Just a text question")
   """
-  @spec create_input_message(String.t(), String.t() | {String.t(), String.t()} | [String.t() | {String.t(), String.t()}] | nil, keyword()) :: map()
-  def create_input_message(text, images \\ nil, opts \\ []) do
+  @spec create_message_with_images(String.t(), String.t() | {String.t(), String.t()} | [String.t() | {String.t(), String.t()}] | nil, keyword()) :: map()
+  def create_message_with_images(text, images \\ nil, opts \\ []) do
     default_detail = Keyword.get(opts, :detail)
     role = Keyword.get(opts, :role, "user")
     

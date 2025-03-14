@@ -1,10 +1,10 @@
-defmodule OpenAI.Responses.Helpers.InputHelpersTest do
+defmodule OpenAI.Responses.Helpers.ImageHelpersTest do
   use ExUnit.Case
-  alias OpenAI.Responses.Helpers.InputHelpers
+  alias OpenAI.Responses.Helpers.ImageHelpers
 
-  describe "create_input_message/3" do
+  describe "create_message_with_images/3" do
     test "creates text-only message" do
-      message = InputHelpers.create_input_message("Hello world")
+      message = ImageHelpers.create_message_with_images("Hello world")
       
       assert message == %{
         "role" => "user",
@@ -16,7 +16,7 @@ defmodule OpenAI.Responses.Helpers.InputHelpersTest do
     
     test "creates message with URL image" do
       image_url = "https://example.com/image.jpg"
-      message = InputHelpers.create_input_message("Check this image", image_url)
+      message = ImageHelpers.create_message_with_images("Check this image", image_url)
       
       assert message == %{
         "role" => "user",
@@ -33,7 +33,7 @@ defmodule OpenAI.Responses.Helpers.InputHelpersTest do
         "https://example.com/image2.jpg"
       ]
       
-      message = InputHelpers.create_input_message("Compare these images", image_urls)
+      message = ImageHelpers.create_message_with_images("Compare these images", image_urls)
       
       assert message == %{
         "role" => "user",
@@ -47,7 +47,7 @@ defmodule OpenAI.Responses.Helpers.InputHelpersTest do
     
     test "supports images with detail level specified" do
       image_with_detail = {"https://example.com/image.jpg", "high"}
-      message = InputHelpers.create_input_message("High detail analysis", image_with_detail)
+      message = ImageHelpers.create_message_with_images("High detail analysis", image_with_detail)
       
       assert message == %{
         "role" => "user",
@@ -64,7 +64,7 @@ defmodule OpenAI.Responses.Helpers.InputHelpersTest do
         "https://example.com/image2.jpg"
       ]
       
-      message = InputHelpers.create_input_message("Compare these images", image_urls, detail: "low")
+      message = ImageHelpers.create_message_with_images("Compare these images", image_urls, detail: "low")
       
       assert message == %{
         "role" => "user",
@@ -82,7 +82,7 @@ defmodule OpenAI.Responses.Helpers.InputHelpersTest do
         {"https://example.com/image2.jpg", "high"}
       ]
       
-      message = InputHelpers.create_input_message("Mixed detail analysis", images, detail: "low")
+      message = ImageHelpers.create_message_with_images("Mixed detail analysis", images, detail: "low")
       
       assert message == %{
         "role" => "user",
@@ -95,7 +95,7 @@ defmodule OpenAI.Responses.Helpers.InputHelpersTest do
     end
     
     test "supports custom role" do
-      message = InputHelpers.create_input_message("Hello", nil, role: "system")
+      message = ImageHelpers.create_message_with_images("Hello", nil, role: "system")
       
       assert message == %{
         "role" => "system",
