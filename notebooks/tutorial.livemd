@@ -8,7 +8,7 @@ Mix.install([
 
 ## Introduction
 
-The only setup you need for using the library is to get your OpenAI API token, and if you already have `OPENAI_API_KEY` environment variable set than you can start right away.
+The only setup you need for using the library is to get your OpenAI API token. If you already have the `OPENAI_API_KEY` environment variable set, then you can start right away.
 
 ```elixir
 alias OpenAI.Responses
@@ -25,7 +25,7 @@ alias OpenAI.Responses.Helpers
 {:ok, response} = Responses.create("gpt-4o", "Write a haiku about programming")
 ```
 
-The `response` is just a map, and you can use helper function to extract information from it:
+The `response` is just a map, and you can use helper functions to extract information from it:
 
 ```elixir
 Helpers.has_refusal?(response)
@@ -63,6 +63,67 @@ IO.puts Helpers.output_text(response)
 
 ## Image helpers
 
+As we saw in the previous section, you can manually create a structured input with images, but this requires writing verbose JSON-like structures. The library provides helper functions to make this process more ergonomic.
+
+```elixir
+# Using the helper function to create a message with an image
+input_message = Helpers.create_message_with_images(
+  "What is in this image?", 
+  "https://upload.wikimedia.org/wikipedia/commons/d/d2/Three_early_medicine_bottles.jpg"
+)
+
+# The helper creates the same structure as the manual approach, but with less code
+input_message
+```
+
+You can also specify multiple images with different detail levels:
+
+```elixir
+multi_image_message = Helpers.create_message_with_images(
+  "Compare these two images",
+  [
+    {"https://upload.wikimedia.org/wikipedia/commons/d/d2/Three_early_medicine_bottles.jpg", "high"},
+    "https://upload.wikimedia.org/wikipedia/commons/3/36/Quinine_bottles.jpg"
+  ],
+  detail: "low"  # Default detail level for images without a specific level
+)
+
+# And then use it with the API
+{:ok, response} = OpenAI.Responses.create("gpt-4o", [multi_image_message])
+IO.puts Helpers.output_text(response)
+```
+
+Local image files are also supported and will be automatically encoded as base64 data URLs:
+
+```elixir
+# This would work if you have these image files locally
+# local_image_message = Helpers.create_message_with_images(
+#   "Describe these local images",
+#   ["path/to/image1.jpg", "path/to/image2.png"]
+# )
+```
+
+### Comparison with manual approach
+
+Compare the helper approach:
+
+```elixir
+message = Helpers.create_message_with_images("What's in this image?", "https://example.com/image.jpg")
+```
+
+With the manual approach:
+
+```elixir
+message = %{
+  "role" => "user",
+  "content" => [
+    %{"type" => "input_text", "text" => "What's in this image?"},
+    %{"type" => "input_image", "image_url" => "https://example.com/image.jpg"}
+  ]
+}
+```
+
+The helper function eliminates boilerplate code, handles encoding of local images, and provides a more intuitive interface for working with images in your prompts.
 
 
 <!-- livebook:{"branch_parent_index":0} -->
