@@ -83,7 +83,7 @@ multi_image_message = Helpers.create_message_with_images(
   "Compare these two images",
   [
     {"https://upload.wikimedia.org/wikipedia/commons/d/d2/Three_early_medicine_bottles.jpg", "high"},
-    "https://upload.wikimedia.org/wikipedia/commons/3/36/Quinine_bottles.jpg"
+    "https://upload.wikimedia.org/wikipedia/commons/4/48/Cocacolacollection.JPG"
   ],
   detail: "low"  # Default detail level for images without a specific level
 )
@@ -124,7 +124,6 @@ message = %{
 ```
 
 The helper function eliminates boilerplate code, handles encoding of local images, and provides a more intuitive interface for working with images in your prompts.
-
 
 <!-- livebook:{"branch_parent_index":0} -->
 
