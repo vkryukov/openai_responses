@@ -61,6 +61,12 @@ IO.puts Helpers.output_text(response)
 
 <!-- livebook:{"branch_parent_index":0} -->
 
+## Image helpers
+
+
+
+<!-- livebook:{"branch_parent_index":0} -->
+
 ## Using built-in tools
 
 The usage of built-in tools can be illustrated by the following example:
