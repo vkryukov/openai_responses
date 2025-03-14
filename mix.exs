@@ -34,7 +34,7 @@ defmodule OpenaiResponses.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/username/openai_responses"}
+      links: %{"GitHub" => "https://github.com/vkryukov/openai_responses"}
     ]
   end
 
