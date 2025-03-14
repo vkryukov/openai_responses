@@ -63,6 +63,24 @@ IO.puts(text)
 ### Structured Input
 
 ```elixir
+# Create a structured input with helper function
+input_message = OpenAI.Responses.Helpers.create_input_message(
+  "What is in this image?", 
+  "https://example.com/image.jpg"
+)
+
+{:ok, response} = OpenAI.Responses.create("gpt-4o", [input_message])
+
+# With local images (automatically encoded to Base64)
+input_message = OpenAI.Responses.Helpers.create_input_message(
+  "Describe these images",
+  ["path/to/image1.jpg", "path/to/image2.jpg"],
+  detail: "high"  # Optional detail level
+)
+
+{:ok, response} = OpenAI.Responses.create("gpt-4o", [input_message])
+
+# Or manually create the structured input
 input = [
   %{
     "role" => "user",
