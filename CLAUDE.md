@@ -25,7 +25,7 @@
 
 ## API Documentation
 
-- API documentation is located in docs/
+- API documentation is located in openai_docs/
 - It might reference some other APIs, functions, formats, etc. that are not
   present in the folder. If you need to references them, explain to the user
   what's missing and ask the user to update the folder with missing docs.
