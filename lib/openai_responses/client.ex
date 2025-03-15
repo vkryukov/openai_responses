@@ -73,6 +73,10 @@ defmodule OpenAI.Responses.Client do
   @doc """
   Streams a response from the OpenAI API.
 
+  Uses Req's built-in streaming capabilities. This implementation
+  creates a proper Elixir Stream that processes events as they
+  arrive from the API.
+
   ## Parameters
 
     * `client` - The client from `new/1`
@@ -81,34 +85,34 @@ defmodule OpenAI.Responses.Client do
 
   ## Returns
 
-    * A stream of events
+    * A stream of events that can be processed in real-time
   """
   @spec stream(map(), String.t(), map()) :: Enumerable.t()
   def stream(client, path, body) do
     pid = self()
     ref = make_ref()
-    
+
     Stream.resource(
-      fn -> 
+      fn ->
         Task.async(fn ->
           options = [
             json: body,
             into: fn {:data, data}, {req, resp} ->
               # Process each chunk of data as it arrives
               events = parse_sse_events(data)
-              
+
               # Send each event to the calling process
-              Enum.each(events, fn event -> 
+              Enum.each(events, fn event ->
                 send(pid, {ref, event})
               end)
-              
+
               {:cont, {req, resp}}
             end
           ]
-          
+
           # Make the request with streaming enabled
           Req.post(client, [url: path] ++ options)
-          
+
           # Signal that we're done
           send(pid, {ref, :done})
         end)
@@ -118,22 +122,23 @@ defmodule OpenAI.Responses.Client do
         receive do
           {^ref, :done} ->
             {:halt, task}
-            
+
           {^ref, event} ->
             {[event], task}
         after
-          30_000 -> # Timeout after 30 seconds of inactivity
+          # Timeout after 30 seconds of inactivity
+          30_000 ->
             Task.shutdown(task, :brutal_kill)
             {:halt, task}
         end
       end,
-      fn task -> 
+      fn task ->
         # Clean up the task when we're done
         Task.shutdown(task, :brutal_kill)
       end
     )
   end
-  
+
   # Parse Server-Sent Events format
   defp parse_sse_events(data) do
     data
@@ -176,4 +181,3 @@ defmodule OpenAI.Responses.Client do
     end)
   end
 end
-

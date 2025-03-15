@@ -131,7 +131,6 @@ text_stream = OpenAI.Responses.text_deltas(stream)
 text_stream
 |> Stream.each(fn delta ->
   IO.write(delta)
-  IO.flush()
   Process.sleep(10)  # Add delay for typing effect
 end)
 |> Stream.run()
