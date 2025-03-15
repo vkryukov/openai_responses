@@ -103,35 +103,40 @@ input = [
 # Get a stream of events (returns an Enumerable)
 stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
 
-# Iterate over raw events as they arrive
-for event <- stream do
-  IO.inspect(event)
-end
+# Iterate over raw events as they arrive (true streaming)
+stream 
+|> Stream.each(&IO.inspect/1) 
+|> Stream.run()
 
 # Print text deltas as they arrive (real-time output)
 stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
-text_stream = OpenAI.Responses.Stream.text_deltas(stream)
+text_stream = OpenAI.Responses.text_deltas(stream)
 
-for delta <- text_stream do
+# This preserves streaming behavior (one chunk at a time)
+text_stream
+|> Stream.each(fn delta -> 
   IO.write(delta)
   IO.flush()  # Ensure output is displayed immediately
-end
+end)
+|> Stream.run()
 IO.puts("")   # Add a newline at the end
 
 # Create a typing effect
 stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
-text_stream = OpenAI.Responses.Stream.text_deltas(stream)
+text_stream = OpenAI.Responses.text_deltas(stream)
 
-for delta <- text_stream do
+text_stream
+|> Stream.each(fn delta -> 
   IO.write(delta)
   IO.flush()
   Process.sleep(10)  # Add delay for typing effect
-end
+end)
+|> Stream.run()
 IO.puts("")
 
 # Collect a complete response from a stream
 stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
-response = OpenAI.Responses.Stream.collect(stream)
+response = OpenAI.Responses.collect_stream(stream)
 
 # Work with the collected response
 text = OpenAI.Responses.Helpers.output_text(response)

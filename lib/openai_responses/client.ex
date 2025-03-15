@@ -98,6 +98,7 @@ defmodule OpenAI.Responses.Client do
     end
   end
   
+  defp process_stream(:done), do: {:halt, :done}
   defp process_stream({:error, error}), do: {:halt, error}
   defp process_stream({:ok, resp}) do
     case resp do
@@ -128,7 +129,7 @@ defmodule OpenAI.Responses.Client do
         :ok
     end
   end
-  defp end_stream(:done), do: :ok  # Handle the :done state
+  defp end_stream(:done), do: :ok
   defp end_stream(_), do: :ok
   
   defp parse_sse_events(data) do
