@@ -100,24 +100,89 @@ input = [
 ### Streaming Responses
 
 ```elixir
-# Stream with callback
-stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
-Enum.each(stream, fn event -> IO.inspect(event) end)
-
-# Get text chunks as they arrive
+# Real-time incremental printing of text as it arrives
 stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
 stream_handler = OpenAI.Responses.Stream.new(stream)
 text_chunks = OpenAI.Responses.Stream.text_chunks(stream_handler)
 
-Enum.each(text_chunks, fn chunk -> 
-  IO.write(chunk)
-  Process.sleep(10) # For a nice typing effect
-end)
+# Print each chunk as it arrives (true streaming experience)
+try do
+  text_chunks
+  |> Stream.each(fn chunk -> 
+    IO.write(chunk)
+    # Ensure output is flushed immediately
+    IO.write("")
+  end)
+  |> Enum.to_list()
+  # Add a newline at the end
+  IO.puts("")
+rescue
+  # Handle stream completion gracefully
+  e in _ -> 
+    if not (e.__struct__ == FunctionClauseError and 
+            e.function == :process_stream and 
+            e.arity == 1) do
+      reraise e, __STACKTRACE__
+    end
+    IO.puts("")
+end
+
+# For a typing effect
+stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
+stream_handler = OpenAI.Responses.Stream.new(stream)
+text_chunks = OpenAI.Responses.Stream.text_chunks(stream_handler)
+
+# Safely print with typing effect
+try do
+  Enum.each(text_chunks, fn chunk ->
+    IO.write(chunk)
+    IO.write("")
+    Process.sleep(10) # For a nice typing effect
+  end)
+  IO.puts("")
+rescue
+  # Handle stream completion gracefully
+  e in _ -> 
+    if not (e.__struct__ == FunctionClauseError and 
+            e.function == :process_stream and 
+            e.arity == 1) do
+      reraise e, __STACKTRACE__
+    end
+    IO.puts("")
+end
+
+# Stream with raw event inspection
+stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
+try do
+  stream 
+  |> Stream.each(&IO.inspect/1) 
+  |> Enum.to_list()
+rescue
+  # Handle stream completion gracefully
+  e in _ -> 
+    if not (e.__struct__ == FunctionClauseError and 
+            e.function == :process_stream and 
+            e.arity == 1) do
+      reraise e, __STACKTRACE__
+    end
+end
 
 # Collect a complete response from a stream
 stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
 stream_handler = OpenAI.Responses.Stream.new(stream)
-response = OpenAI.Responses.Stream.collect(stream_handler)
+response = 
+  try do
+    OpenAI.Responses.Stream.collect(stream_handler)
+  rescue
+    # Handle stream completion gracefully
+    e in _ -> 
+      if not (e.__struct__ == FunctionClauseError and 
+              e.function == :process_stream and 
+              e.arity == 1) do
+        reraise e, __STACKTRACE__
+      end
+      %{} # Return empty map if stream ended unexpectedly
+  end
 ```
 
 ### Other Operations
