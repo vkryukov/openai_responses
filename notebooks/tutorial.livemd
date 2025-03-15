@@ -103,10 +103,6 @@ Local image files are also supported and will be automatically encoded as base64
 # )
 ```
 
-```elixir
-message = Helpers.create_message_with_images("What's in this image?", "https://example.com/image.jpg")
-```
-
 The helper function eliminates boilerplate code, handles encoding of local images, and provides a more intuitive interface for working with images in your prompts.
 
 <!-- livebook:{"branch_parent_index":0} -->
