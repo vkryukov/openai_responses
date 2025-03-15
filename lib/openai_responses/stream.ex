@@ -40,7 +40,7 @@ defmodule OpenAI.Responses.Stream do
   """
   @spec transform(map(), function()) :: Enumerable.t()
   def transform(%{stream: stream}, callback) when is_function(callback, 1) do
-    Stream.map(stream, callback)
+    Elixir.Stream.map(stream, callback)
   end
   
   @doc """

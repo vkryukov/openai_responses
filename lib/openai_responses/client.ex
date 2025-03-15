@@ -100,20 +100,35 @@ defmodule OpenAI.Responses.Client do
   
   defp process_stream({:error, error}), do: {:halt, error}
   defp process_stream({:ok, resp}) do
-    case :hackney.stream_body(resp.raw.ref) do
-      {:ok, data} ->
-        events = parse_sse_events(data)
-        {events, {:ok, resp}}
-      :done ->
-        {:halt, {:ok, resp}}
-      {:error, error} ->
-        {:halt, {:error, error}}
+    case resp do
+      %{raw: %{ref: ref}} when is_reference(ref) ->
+        case :hackney.stream_body(ref) do
+          {:ok, data} ->
+            events = parse_sse_events(data)
+            {events, {:ok, resp}}
+          :done ->
+            {:halt, {:ok, resp}}
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      _ ->
+        # Handle Req response without raw.ref
+        body = Map.get(resp, :body, "")
+        events = parse_sse_events(body)
+        # Return the events and mark as done
+        {events, :done}
     end
   end
   
   defp end_stream({:ok, resp}) do
-    :hackney.close(resp.raw.ref)
+    case resp do
+      %{raw: %{ref: ref}} when is_reference(ref) ->
+        :hackney.close(ref)
+      _ ->
+        :ok
+    end
   end
+  defp end_stream(:done), do: :ok  # Handle the :done state
   defp end_stream(_), do: :ok
   
   defp parse_sse_events(data) do
@@ -133,9 +148,9 @@ defmodule OpenAI.Responses.Client do
     case {event_type, data} do
       {nil, _} -> nil
       {_, nil} -> nil
-      {type, data} ->
+      {_type, data} ->
         case Jason.decode(data) do
-          {:ok, parsed} -> Map.put(parsed, "event", type)
+          {:ok, parsed} -> parsed  # Keep the original "type" field from parsed data
           _ -> nil
         end
     end
