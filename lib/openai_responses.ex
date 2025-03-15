@@ -62,8 +62,8 @@ defmodule OpenAI.Responses do
   @doc """
   Creates a streaming response with the specified model and input.
   
-  Similar to `create/3` but returns a stream of events instead of a single response.
-  You can consume this stream with `Enum.each/2`, `Stream.transform/3`, etc.
+  This function is being maintained for backward compatibility.
+  New code should use `stream/3` instead.
   
   ## Returns
   
@@ -71,6 +71,38 @@ defmodule OpenAI.Responses do
   """
   @spec create_stream(String.t(), String.t() | map() | list(), keyword()) :: Enumerable.t()
   def create_stream(model, input, opts \\ []) do
+    stream(model, input, opts)
+  end
+  
+  @doc """
+  Creates a streaming response and returns a proper Enumerable stream of events.
+  
+  This function returns a stream that yields individual events as they arrive from the API,
+  making it suitable for real-time processing of responses.
+  
+  ## Parameters
+  
+    * `model` - The model ID to use (e.g., "gpt-4o")
+    * `input` - The text prompt or structured input message
+    * `opts` - Optional parameters for the request (same as `create/3`)
+  
+  ## Examples
+  
+      # Print each event as it arrives
+      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      Enum.each(stream, &IO.inspect/1)
+      
+      # Process text deltas in real-time
+      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      text_stream = OpenAI.Responses.Stream.text_deltas(stream)
+      Enum.each(text_stream, &IO.write/1)
+      
+  ## Returns
+  
+    * An Enumerable stream that yields events as they arrive
+  """
+  @spec stream(String.t(), String.t() | map() | list(), keyword()) :: Enumerable.t()
+  def stream(model, input, opts \\ []) do
     client = opts[:client] || Client.new(opts)
     payload = prepare_create_payload(model, input, Keyword.put(opts, :stream, true))
     
@@ -145,6 +177,63 @@ defmodule OpenAI.Responses do
     query = Map.new(for {k, v} <- opts, k in [:before, :after, :limit, :order], do: {k, v})
     
     Client.request(client, :get, "/responses/#{response_id}/input_items", nil, query)
+  end
+  
+  @doc """
+  Extracts text deltas from a streaming response.
+  
+  This is a convenience function that returns a stream of text chunks as they arrive,
+  useful for real-time display of model outputs.
+  
+  ## Parameters
+  
+    * `stream` - The stream from OpenAI.Responses.stream/3
+  
+  ## Returns
+  
+    * A stream of text deltas
+    
+  ## Examples
+  
+      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      text_chunks = OpenAI.Responses.text_deltas(stream)
+      
+      for chunk <- text_chunks do
+        IO.write(chunk)
+        IO.flush()
+      end
+  """
+  @spec text_deltas(Enumerable.t()) :: Enumerable.t(String.t())
+  def text_deltas(stream) do
+    OpenAI.Responses.Stream.text_deltas(stream)
+  end
+  
+  @doc """
+  Collects a complete response from a streaming response.
+  
+  This is a convenience function that consumes a stream and returns a complete response,
+  similar to what would be returned by the non-streaming API.
+  
+  ## Parameters
+  
+    * `stream` - The stream from OpenAI.Responses.stream/3
+  
+  ## Returns
+  
+    * The complete response map
+    
+  ## Examples
+  
+      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      response = OpenAI.Responses.collect_stream(stream)
+      
+      # Process the complete response
+      text = OpenAI.Responses.Helpers.output_text(response)
+      IO.puts(text)
+  """
+  @spec collect_stream(Enumerable.t()) :: map()
+  def collect_stream(stream) do
+    OpenAI.Responses.Stream.collect(stream)
   end
   
   # Private helpers

@@ -100,89 +100,42 @@ input = [
 ### Streaming Responses
 
 ```elixir
-# Real-time incremental printing of text as it arrives
-stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
-stream_handler = OpenAI.Responses.Stream.new(stream)
-text_chunks = OpenAI.Responses.Stream.text_chunks(stream_handler)
+# Get a stream of events (returns an Enumerable)
+stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
 
-# Print each chunk as it arrives (true streaming experience)
-try do
-  text_chunks
-  |> Stream.each(fn chunk -> 
-    IO.write(chunk)
-    # Ensure output is flushed immediately
-    IO.write("")
-  end)
-  |> Enum.to_list()
-  # Add a newline at the end
-  IO.puts("")
-rescue
-  # Handle stream completion gracefully
-  e in _ -> 
-    if not (e.__struct__ == FunctionClauseError and 
-            e.function == :process_stream and 
-            e.arity == 1) do
-      reraise e, __STACKTRACE__
-    end
-    IO.puts("")
+# Iterate over raw events as they arrive
+for event <- stream do
+  IO.inspect(event)
 end
 
-# For a typing effect
-stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
-stream_handler = OpenAI.Responses.Stream.new(stream)
-text_chunks = OpenAI.Responses.Stream.text_chunks(stream_handler)
+# Print text deltas as they arrive (real-time output)
+stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+text_stream = OpenAI.Responses.Stream.text_deltas(stream)
 
-# Safely print with typing effect
-try do
-  Enum.each(text_chunks, fn chunk ->
-    IO.write(chunk)
-    IO.write("")
-    Process.sleep(10) # For a nice typing effect
-  end)
-  IO.puts("")
-rescue
-  # Handle stream completion gracefully
-  e in _ -> 
-    if not (e.__struct__ == FunctionClauseError and 
-            e.function == :process_stream and 
-            e.arity == 1) do
-      reraise e, __STACKTRACE__
-    end
-    IO.puts("")
+for delta <- text_stream do
+  IO.write(delta)
+  IO.flush()  # Ensure output is displayed immediately
 end
+IO.puts("")   # Add a newline at the end
 
-# Stream with raw event inspection
-stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
-try do
-  stream 
-  |> Stream.each(&IO.inspect/1) 
-  |> Enum.to_list()
-rescue
-  # Handle stream completion gracefully
-  e in _ -> 
-    if not (e.__struct__ == FunctionClauseError and 
-            e.function == :process_stream and 
-            e.arity == 1) do
-      reraise e, __STACKTRACE__
-    end
+# Create a typing effect
+stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+text_stream = OpenAI.Responses.Stream.text_deltas(stream)
+
+for delta <- text_stream do
+  IO.write(delta)
+  IO.flush()
+  Process.sleep(10)  # Add delay for typing effect
 end
+IO.puts("")
 
 # Collect a complete response from a stream
-stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
-stream_handler = OpenAI.Responses.Stream.new(stream)
-response = 
-  try do
-    OpenAI.Responses.Stream.collect(stream_handler)
-  rescue
-    # Handle stream completion gracefully
-    e in _ -> 
-      if not (e.__struct__ == FunctionClauseError and 
-              e.function == :process_stream and 
-              e.arity == 1) do
-        reraise e, __STACKTRACE__
-      end
-      %{} # Return empty map if stream ended unexpectedly
-  end
+stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+response = OpenAI.Responses.Stream.collect(stream)
+
+# Work with the collected response
+text = OpenAI.Responses.Helpers.output_text(response)
+IO.puts(text)
 ```
 
 ### Other Operations

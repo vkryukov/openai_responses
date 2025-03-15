@@ -107,7 +107,7 @@ defmodule OpenAI.Responses.Client do
             events = parse_sse_events(data)
             {events, {:ok, resp}}
           :done ->
-            {:halt, {:ok, resp}}
+            {:halt, :done}
           {:error, error} ->
             {:halt, {:error, error}}
         end
