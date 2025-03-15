@@ -3,6 +3,8 @@
 A simple Elixir client for the OpenAI Responses API, built on top of
 [Req](https://github.com/wojtekmach/req).
 
+> **[Interactive LiveBook Tutorial](notebooks/tutorial.livemd)** - Learn how to use this library with interactive examples
+
 ## Installation
 
 Add `openai_responses` to your list of dependencies in `mix.exs`:

@@ -1,4 +1,4 @@
-# Tutorial
+# OpenAI Responses Tutorial
 
 ```elixir
 Mix.install([

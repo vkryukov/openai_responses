@@ -39,8 +39,31 @@ defmodule OpenaiResponses.MixProject do
 
   defp docs do
     [
-      main: "OpenAI.Responses",
-      extras: ["README.md"]
+      # Set README.md as the default page
+      main: "readme",
+      # Define the structure of documentation
+      extras: [
+        "README.md",
+        "notebooks/tutorial.livemd"
+      ],
+      # Group documentation sections
+      groups_for_extras: [
+        "Guides": ~r/README\.md/,
+        "Interactive Tutorials": ~r/\.livemd$/
+      ],
+      # Order of modules in sidebar
+      groups_for_modules: [
+        "Client API": [
+          OpenAI.Responses
+        ],
+        "Utilities": [
+          OpenAI.Responses.Stream,
+          OpenAI.Responses.Helpers,
+          OpenAI.Responses.Client,
+          OpenAI.Responses.Config,
+          OpenAI.Responses.Types
+        ]
+      ]
     ]
   end
 end
