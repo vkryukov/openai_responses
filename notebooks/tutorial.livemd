@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:openai_responses, path: "~/src/openai_responses"},
+  {:openai_responses, "~> 0.1.0"},
   {:kino, "~> 0.11.0"}
 ])
 ```

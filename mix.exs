@@ -33,7 +33,9 @@ defmodule OpenaiResponses.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/vkryukov/openai_responses"}
+      links: %{"GitHub" => "https://github.com/vkryukov/openai_responses"},
+      maintainers: ["Victor Kryukov"],
+      description: "Elixir client for OpenAI Responses API"
     ]
   end
 
@@ -48,7 +50,7 @@ defmodule OpenaiResponses.MixProject do
       ],
       # Group documentation sections
       groups_for_extras: [
-        "Guides": ~r/README\.md/,
+        Guides: ~r/README\.md/,
         "Interactive Tutorials": ~r/\.livemd$/
       ],
       # Order of modules in sidebar
@@ -56,7 +58,7 @@ defmodule OpenaiResponses.MixProject do
         "Client API": [
           OpenAI.Responses
         ],
-        "Utilities": [
+        Utilities: [
           OpenAI.Responses.Stream,
           OpenAI.Responses.Helpers,
           OpenAI.Responses.Client,
