@@ -71,16 +71,35 @@ defmodule OpenAI.Responses.Stream do
   """
   @spec text_deltas(Enumerable.t()) :: Enumerable.t(String.t())
   def text_deltas(stream) do
-    Stream.flat_map(stream, fn event ->
+    # Keeps track of whether we've seen a "completed" event
+    acc = Stream.transform(stream, %{completed: false}, fn event, acc ->
       case event do
+        # Delta events (streaming chunks)
         %{"type" => "response.output_text.delta", "delta" => delta} ->
-          [delta]
-        %{"type" => "response.output_text.done", "text" => text} ->
-          [text]
+          {[delta], acc}
+          
+        # The final text from a chunk
+        %{"type" => "response.output_text.done", "text" => _text} ->
+          # Skip this if we've already seen the completed response
+          if acc.completed do
+            {[], acc}
+          else
+            # We'll emit empty string to avoid duplicating the full text
+            {[], acc}
+          end
+          
+        # The completed response - mark that we've seen it but don't emit the text
+        %{"type" => "response.completed"} ->
+          {[], %{acc | completed: true}}
+          
+        # Ignore all other events
         _ ->
-          []
+          {[], acc}
       end
     end)
+    
+    # Filter out any empty strings
+    Stream.filter(acc, fn s -> s != "" end)
   end
   
   @doc """

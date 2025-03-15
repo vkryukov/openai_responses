@@ -1,6 +1,7 @@
 # OpenAI.Responses
 
-A simple Elixir client for the OpenAI Responses API, built on top of [Req](https://github.com/wojtekmach/req).
+A simple Elixir client for the OpenAI Responses API, built on top of
+[Req](https://github.com/wojtekmach/req).
 
 ## Installation
 
@@ -65,7 +66,7 @@ IO.puts(text)
 ```elixir
 # Create a structured input with helper function
 input_message = OpenAI.Responses.Helpers.create_input_message(
-  "What is in this image?", 
+  "What is in this image?",
   "https://example.com/image.jpg"
 )
 
@@ -99,15 +100,16 @@ input = [
 
 ### Streaming Responses
 
-The library now uses Req's built-in streaming capabilities with the `:into` keyword for more reliable streaming.
+The library now uses Req's built-in streaming capabilities with the `:into`
+keyword for more reliable streaming.
 
 ```elixir
 # Get a stream of events (returns an Enumerable)
 stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
 
 # Iterate over raw events as they arrive (true streaming)
-stream 
-|> Stream.each(&IO.inspect/1) 
+stream
+|> Stream.each(&IO.inspect/1)
 |> Stream.run()
 
 # Print text deltas as they arrive (real-time output)
@@ -116,9 +118,8 @@ text_stream = OpenAI.Responses.text_deltas(stream)
 
 # This preserves streaming behavior (one chunk at a time)
 text_stream
-|> Stream.each(fn delta -> 
+|> Stream.each(fn delta ->
   IO.write(delta)
-  IO.flush()  # Ensure output is displayed immediately
 end)
 |> Stream.run()
 IO.puts("")   # Add a newline at the end
@@ -128,7 +129,7 @@ stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
 text_stream = OpenAI.Responses.text_deltas(stream)
 
 text_stream
-|> Stream.each(fn delta -> 
+|> Stream.each(fn delta ->
   IO.write(delta)
   IO.flush()
   Process.sleep(10)  # Add delay for typing effect
@@ -160,7 +161,8 @@ IO.puts(text)
 
 ## Helper Functions
 
-The `OpenAI.Responses.Helpers` module provides utility functions for working with responses:
+The `OpenAI.Responses.Helpers` module provides utility functions for working
+with responses:
 
 ```elixir
 # Extract text from a response
@@ -181,8 +183,10 @@ end
 
 ## Documentation
 
-For more detailed documentation, run `mix docs` to generate full API documentation.
+For more detailed documentation, run `mix docs` to generate full API
+documentation.
 
 ## License
 
 MIT
+
