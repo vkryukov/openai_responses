@@ -99,6 +99,8 @@ input = [
 
 ### Streaming Responses
 
+The library now uses Req's built-in streaming capabilities with the `:into` keyword for more reliable streaming.
+
 ```elixir
 # Get a stream of events (returns an Enumerable)
 stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")

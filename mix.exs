@@ -26,7 +26,6 @@ defmodule OpenaiResponses.MixProject do
     [
       {:req, "~> 0.4.0"},
       {:jason, "~> 1.4"},
-      {:hackney, "~> 1.20"},
       {:ex_doc, "~> 0.29", only: :dev, runtime: false}
     ]
   end

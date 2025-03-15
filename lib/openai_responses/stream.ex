@@ -143,7 +143,7 @@ defmodule OpenAI.Responses.Stream do
       IO.puts(text)
   """
   @spec collect(Enumerable.t()) :: map()
-  def collect(stream) do
+  def collect(stream) when is_function(stream, 2) or is_list(stream) do
     Enum.reduce(stream, %{}, fn event, acc ->
       case event do
         %{"type" => "response.completed", "response" => response} ->
@@ -172,21 +172,7 @@ defmodule OpenAI.Responses.Stream do
     end)
   end
   
-  @doc """
-  Collects all streaming events from a stream handler into a final response (legacy function).
-  
-  This function is maintained for backward compatibility.
-  For new code, use `collect/1` with the stream directly.
-  
-  ## Parameters
-  
-    * `stream_handler` - The stream handler from new/2
-  
-  ## Returns
-  
-    * The complete response map
-  """
-  @spec collect(map()) :: map()
+  # Legacy version of collect for backward compatibility
   def collect(%{stream: stream}) do
     collect(stream)
   end

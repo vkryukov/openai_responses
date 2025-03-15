@@ -85,72 +85,63 @@ defmodule OpenAI.Responses.Client do
   """
   @spec stream(map(), String.t(), map()) :: Enumerable.t()
   def stream(client, path, body) do
-    client = Req.merge(client, raw: true)
-
+    pid = self()
+    ref = make_ref()
+    
     Stream.resource(
-      fn -> start_stream(client, path, body) end,
-      &process_stream/1,
-      &end_stream/1
+      fn -> 
+        Task.async(fn ->
+          options = [
+            json: body,
+            into: fn {:data, data}, {req, resp} ->
+              # Process each chunk of data as it arrives
+              events = parse_sse_events(data)
+              
+              # Send each event to the calling process
+              Enum.each(events, fn event -> 
+                send(pid, {ref, event})
+              end)
+              
+              {:cont, {req, resp}}
+            end
+          ]
+          
+          # Make the request with streaming enabled
+          Req.post(client, url: path, options: options)
+          
+          # Signal that we're done
+          send(pid, {ref, :done})
+        end)
+      end,
+      fn task ->
+        # Process events as they arrive from the task
+        receive do
+          {^ref, :done} ->
+            {:halt, task}
+            
+          {^ref, event} ->
+            {[event], task}
+        after
+          30_000 -> # Timeout after 30 seconds of inactivity
+            Task.shutdown(task, :brutal_kill)
+            {:halt, task}
+        end
+      end,
+      fn task -> 
+        # Clean up the task when we're done
+        Task.shutdown(task, :brutal_kill)
+      end
     )
   end
-
-  defp start_stream(client, path, body) do
-    case Req.post(client, url: path, json: body) do
-      {:ok, resp = %{status: status}} when status in 200..299 ->
-        IO.inspect(resp.headers, label: "Response headers")
-        {:ok, resp}
-
-      error ->
-        {:error, error}
-    end
-  end
-
-  defp process_stream(:done), do: {:halt, :done}
-  defp process_stream({:error, error}), do: {:halt, error}
-
-  defp process_stream({:ok, resp}) do
-    case resp do
-      %{raw: %{ref: ref}} when is_reference(ref) ->
-        case :hackney.stream_body(ref) do
-          {:ok, data} ->
-            events = parse_sse_events(data)
-            {events, {:ok, resp}}
-
-          :done ->
-            {:halt, :done}
-
-          {:error, error} ->
-            {:halt, {:error, error}}
-        end
-
-      _ ->
-        # Handle Req response without raw.ref
-        body = Map.get(resp, :body, "")
-        events = parse_sse_events(body)
-        # Return the events and mark as done
-        {events, :done}
-    end
-  end
-
-  defp end_stream({:ok, resp}) do
-    case resp do
-      %{raw: %{ref: ref}} when is_reference(ref) ->
-        :hackney.close(ref)
-
-      _ ->
-        :ok
-    end
-  end
-
-  defp end_stream(:done), do: :ok
-  defp end_stream(_), do: :ok
-
+  
+  # Parse Server-Sent Events format
   defp parse_sse_events(data) do
     data
     |> String.split("\n\n")
     |> Stream.filter(&(&1 != ""))
     |> Stream.map(&parse_sse_event/1)
     |> Stream.filter(&(&1 != nil))
+    |> Enum.to_list()
   end
 
   defp parse_sse_event(event_str) do
