@@ -107,7 +107,7 @@ defmodule OpenAI.Responses.Client do
           ]
           
           # Make the request with streaming enabled
-          Req.post(client, url: path, options: options)
+          Req.post(client, [url: path] ++ options)
           
           # Signal that we're done
           send(pid, {ref, :done})
