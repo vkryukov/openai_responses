@@ -2,7 +2,8 @@
 
 ```elixir
 Mix.install([
-  {:openai_responses, path: "~/src/openai_responses"}
+  {:openai_responses, path: "~/src/openai_responses"},
+  {:kino, "~> 0.11.0"}
 ])
 ```
 
@@ -13,7 +14,6 @@ The only setup you need for using the library is to get your OpenAI API token. I
 ```elixir
 alias OpenAI.Responses
 alias OpenAI.Responses.Helpers
-alias OpenAI.Responses.Stream
 ```
 
 <!-- livebook:{"branch_parent_index":0} -->
@@ -133,91 +133,33 @@ IO.puts(Helpers.output_text(response_with_search))
 
 OpenAI.Responses supports true streaming, where you can process chunks as they arrive without waiting for the entire response to complete.
 
+<!-- livebook:{"break_markdown":true} -->
+
 ### Real-time text streaming
 
-This example demonstrates how to display text as it arrives, for a "typing" effect:
+This example demonstrates how to display text as it arrives in real-time using Kino.Frame:
 
 ```elixir
+frame = Kino.Frame.new()
+Kino.render(frame)
+
 # Create a stream from OpenAI
-stream = Responses.create_stream("gpt-4o", "Write a short poem about coding")
+stream = Responses.stream("gpt-4o", "Write a short poem about coding in Elixir")
 
-# Initialize the stream handler
-stream_handler = Stream.new(stream)
+# Extract text deltas - no need for initializing a stream handler
+text_stream = Responses.text_deltas(stream)
 
-# Extract text chunks that can be processed in real-time
-text_chunks = Stream.text_chunks(stream_handler)
+Kino.Frame.append(frame, Kino.Markdown.new("## Poem about coding\n"))
 
-# Process each chunk as it arrives
-# In Livebook, accumulate text to see the result
-result = Enum.reduce(text_chunks, "", fn chunk, acc ->
-  # In a real application, you would use IO.write for true streaming
-  # IO.write(chunk)
-  # Process.sleep(10)  # Optional: For a typing effect
-  
-  # For Livebook, accumulate the chunks
-  acc <> chunk
+# Process the stream
+text_stream
+|> Stream.each(fn delta ->
+  Kino.Frame.append(frame, Kino.Markdown.new(delta, chunk: true))
 end)
+|> Stream.run()
 
-# Display the final result in Livebook
-result
-```
 
-### Processing raw events
+Kino.Frame.append(frame, Kino.Markdown.new("\n\n*Generation complete* ✨"))
 
-If you need to handle all event types from the stream:
-
-```elixir
-alias OpenAI.Responses
-alias OpenAI.Responses.Stream
-
-# Create a stream
-stream = Responses.create_stream("gpt-4o", "Write me a story")
-
-# Define a custom event handler function
-event_processor = fn event ->
-  case event do
-    %{"type" => "response.output_text.delta", "delta" => delta} ->
-      # Process text deltas (chunks) in real-time
-      IO.write(delta)
-      event
-    %{"type" => "response.output_text.done", "text" => text} ->
-      # Handle completed text output
-      IO.puts("\nCompleted text: #{String.slice(text, 0..10)}...")
-      event
-    %{"type" => "response.completed"} ->
-      # Handle stream completion
-      IO.puts("\nStream completed!")
-      event
-    _ ->
-      # Handle other event types
-      event
-  end
-end
-
-# Apply the processor to the stream 
-# Note that we need to fully qualify the module to avoid confusion with Elixir's Stream
-stream_handler = OpenAI.Responses.Stream.new(stream)
-processed_stream = OpenAI.Responses.Stream.transform(stream_handler, event_processor)
-
-# Collect just a few events to demo (in a real app, you'd process the full stream)
-Enum.take(processed_stream, 10)
-```
-
-### Building a complete response
-
-If you need the final assembled response after streaming:
-
-```elixir
-# Create a stream
-stream = Responses.create_stream("gpt-4o", "What's 5+7?")
-
-# Initialize the stream handler
-stream_handler = Stream.new(stream)
-
-# Collect a complete response from the stream
-# This processes all events and assembles them into a final response object
-complete_response = Stream.collect(stream_handler)
-
-# Extract text from the collected response
-Helpers.output_text(complete_response)
+:done
 ```
