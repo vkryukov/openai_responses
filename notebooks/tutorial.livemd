@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:openai_responses, "~> 0.1.0"},
+  {:openai_responses, path: "~/src/openai_responses"},
   {:kino, "~> 0.11.0"}
 ])
 ```
@@ -150,6 +150,52 @@ IO.puts(Helpers.output_text(response_no_tools))
   )
 
 IO.puts(Helpers.output_text(response_with_search))
+```
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Structured outputs
+
+Structured output ensures the model always generates responses that adhere to your supplied JSON Schema.
+
+```elixir
+alias OpenAI.Responses.Schema
+
+# Define a schema for a calendar event
+calendar_event_schema = Schema.object(%{
+  name: :string,
+  date: :string,
+  participants: {:array, :string}
+})
+
+# Parse a response with structured output
+{:ok, event} = Responses.parse(
+  "gpt-4o", 
+  "Alice and Bob are going to a science fair on Friday.", 
+  calendar_event_schema,
+  schema_name: "event"
+)
+
+# Access the parsed data
+IO.inspect(event, label: "Calendar Event")
+
+# Define a more complex schema with nested objects
+math_reasoning_schema = Schema.object(%{
+  steps: {:array, Schema.object(%{
+    explanation: :string,
+    output: :string
+  })},
+  final_answer: :string
+})
+
+# Parse with the complex schema
+{:ok, solution} = Responses.parse(
+  "gpt-4o", 
+  "Solve 8x + 7 = -23", 
+  math_reasoning_schema
+)
+
+IO.inspect(solution, label: "Math Solution")
 ```
 
 <!-- livebook:{"branch_parent_index":0} -->
