@@ -23,56 +23,90 @@ Some benefits of Structured Outputs include:
 2.  **Explicit refusals:** Safety-based model refusals are now programmatically detectable
 3.  **Simpler prompting:** No need for strongly worded prompts to achieve consistent formatting
 
-In addition to supporting JSON Schema in the REST API, the OpenAI SDKs for [Python](https://github.com/openai/openai-python/blob/main/helpers.md#structured-outputs-parsing-helpers) and [JavaScript](https://github.com/openai/openai-node/blob/master/helpers.md#structured-outputs-parsing-helpers) also make it easy to define object schemas using [Pydantic](https://docs.pydantic.dev/latest/) and [Zod](https://zod.dev/) respectively. Below, you can see how to extract information from unstructured text that conforms to a schema defined in code.
-
 Getting a structured response
 
 ```javascript
 import OpenAI from "openai";
-import { zodResponseFormat } from "openai/helpers/zod";
-import { z } from "zod";
 
 const openai = new OpenAI();
 
-const CalendarEvent = z.object({
-  name: z.string(),
-  date: z.string(),
-  participants: z.array(z.string()),
-});
-
-const completion = await openai.beta.chat.completions.parse({
+const response = await openai.responses.create({
   model: "gpt-4o-2024-08-06",
-  messages: [
-    { role: "system", content: "Extract the event information." },
-    { role: "user", content: "Alice and Bob are going to a science fair on Friday." },
+  input: [
+    {"role": "system", "content": "Extract the event information."},
+    {"role": "user", "content": "Alice and Bob are going to a science fair on Friday."}
   ],
-  response_format: zodResponseFormat(CalendarEvent, "event"),
+  text: {
+    format: {
+      type: "json_schema",
+      name: "calendar_event",
+      schema: {
+        type: "object",
+        properties: {
+          name: { 
+            type: "string" 
+          },
+          date: { 
+            type: "string" 
+          },
+          participants: { 
+            type: "array", 
+            items: { 
+              type: "string" 
+            } 
+          },
+        },
+        required: ["name", "date", "participants"],
+        additionalProperties: false,
+      },
+    }
+  }
 });
 
-const event = completion.choices[0].message.parsed;
+const event = JSON.parse(response.output_text);
 ```
 
 ```python
-from pydantic import BaseModel
 from openai import OpenAI
+import json
 
 client = OpenAI()
 
-class CalendarEvent(BaseModel):
-    name: str
-    date: str
-    participants: list[str]
-
-completion = client.beta.chat.completions.parse(
+response = client.responses.create(
     model="gpt-4o-2024-08-06",
-    messages=[
+    input=[
         {"role": "system", "content": "Extract the event information."},
-        {"role": "user", "content": "Alice and Bob are going to a science fair on Friday."},
+        {"role": "user", "content": "Alice and Bob are going to a science fair on Friday."}
     ],
-    response_format=CalendarEvent,
+    text={
+        "format": {
+            "type": "json_schema",
+            "name": "calendar_event",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "date": {
+                        "type": "string"
+                    },
+                    "participants": {
+                        "type": "array", 
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                },
+                "required": ["name", "date", "participants"],
+                "additionalProperties": False
+            },
+            "strict": True
+        }
+    }
 )
 
-event = completion.choices[0].message.parsed
+event = json.loads(response.output_text)
 ```
 
 ### Supported models
@@ -87,8 +121,8 @@ Structured Outputs is available in our [latest large language models](/docs/mode
 
 Older models like `gpt-4-turbo` and earlier may use [JSON mode](#json-mode) instead.
 
-When to use Structured Outputs via function calling vs via response\_format
----------------------------------------------------------------------------
+When to use Structured Outputs via function calling vs via text.format
+----------------------------------------------------------------------
 
 Structured Outputs is available in two forms in the OpenAI API:
 
@@ -106,9 +140,9 @@ For example, if you are building a math tutoring application, you might want the
 Put simply:
 
 *   If you are connecting the model to tools, functions, data, etc. in your system, then you should use function calling
-*   If you want to structure the model's output when it responds to the user, then you should use a structured `response_format`
+*   If you want to structure the model's output when it responds to the user, then you should use a structured `text.format`
 
-The remainder of this guide will focus on non-function calling use cases in the Chat Completions API. To learn more about how to use Structured Outputs with function calling, check out the [Function Calling](/docs/guides/function-calling#function-calling-with-structured-outputs) guide.
+The remainder of this guide will focus on non-function calling use cases in the Responses API. To learn more about how to use Structured Outputs with function calling, check out the [Function Calling](/docs/guides/function-calling#function-calling-with-structured-outputs) guide.
 
 ### Structured Outputs vs JSON mode
 
@@ -123,7 +157,7 @@ However, Structured Outputs with `response_format: {type: "json_schema", ...}` i
 |Outputs valid JSON|Yes|Yes|
 |Adheres to schema|Yes (see supported schemas)|No|
 |Compatible models|gpt-4o-mini, gpt-4o-2024-08-06, and later|gpt-3.5-turbo, gpt-4-* and gpt-4o-* models|
-|Enabling|response_format: { type: "json_schema", json_schema: {"strict": true, "schema": ...} }|response_format: { type: "json_object" }|
+|Enabling|text: { format: { type: "json_schema", "strict": true, "schema": ... } }|text: { format: { type: "json_object" } }|
 
 Examples
 --------
@@ -138,66 +172,102 @@ Structured Outputs for chain-of-thought math tutoring
 
 ```javascript
 import OpenAI from "openai";
-import { z } from "zod";
-import { zodResponseFormat } from "openai/helpers/zod";
 
 const openai = new OpenAI();
 
-const Step = z.object({
-  explanation: z.string(),
-  output: z.string(),
+const response = await openai.responses.create({
+    model: "gpt-4o-2024-08-06",
+    input: [
+        {
+            role: "system",
+            content:
+                "You are a helpful math tutor. Guide the user through the solution step by step.",
+        },
+        { role: "user", content: "how can I solve 8x + 7 = -23" },
+    ],
+    text: {
+        format: {
+            type: "json_schema",
+            name: "math_reasoning",
+            schema: {
+                type: "object",
+                properties: {
+                    steps: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                explanation: { type: "string" },
+                                output: { type: "string" },
+                            },
+                            required: ["explanation", "output"],
+                            additionalProperties: false,
+                        },
+                    },
+                    final_answer: { type: "string" },
+                },
+                required: ["steps", "final_answer"],
+                additionalProperties: false,
+            },
+            strict: true,
+        },
+    },
 });
 
-const MathReasoning = z.object({
-  steps: z.array(Step),
-  final_answer: z.string(),
-});
-
-const completion = await openai.beta.chat.completions.parse({
-  model: "gpt-4o-2024-08-06",
-  messages: [
-    { role: "system", content: "You are a helpful math tutor. Guide the user through the solution step by step." },
-    { role: "user", content: "how can I solve 8x + 7 = -23" },
-  ],
-  response_format: zodResponseFormat(MathReasoning, "math_reasoning"),
-});
-
-const math_reasoning = completion.choices[0].message.parsed;
+const math_reasoning = JSON.parse(response.output_text);
 ```
 
 ```python
-from pydantic import BaseModel
+import json
 from openai import OpenAI
 
 client = OpenAI()
 
-class Step(BaseModel):
-    explanation: str
-    output: str
-
-class MathReasoning(BaseModel):
-    steps: list[Step]
-    final_answer: str
-
-completion = client.beta.chat.completions.parse(
+response = client.responses.create(
     model="gpt-4o-2024-08-06",
-    messages=[
+    input=[
         {"role": "system", "content": "You are a helpful math tutor. Guide the user through the solution step by step."},
         {"role": "user", "content": "how can I solve 8x + 7 = -23"}
     ],
-    response_format=MathReasoning,
+    text={
+        "format": {
+            "type": "json_schema",
+            "name": "math_reasoning",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "steps": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "explanation": { "type": "string" },
+                                "output": { "type": "string" }
+                            },
+                            "required": ["explanation", "output"],
+                            "additionalProperties": False
+                        }
+                    },
+                    "final_answer": { "type": "string" }
+                },
+                "required": ["steps", "final_answer"],
+                "additionalProperties": False
+            },
+            "strict": True
+        }
+    }
 )
 
-math_reasoning = completion.choices[0].message.parsed
+math_reasoning = json.loads(response.output_text)
 ```
 
 ```bash
-curl https://api.openai.com/v1/chat/completions \
+curl https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o-2024-08-06",
-    "messages": [
+    "input": [
       {
         "role": "system",
         "content": "You are a helpful math tutor. Guide the user through the solution step by step."
@@ -207,9 +277,9 @@ curl https://api.openai.com/v1/chat/completions \
         "content": "how can I solve 8x + 7 = -23"
       }
     ],
-    "response_format": {
-      "type": "json_schema",
-      "json_schema": {
+    "text": {
+      "format": {
+        "type": "json_schema",
         "name": "math_reasoning",
         "schema": {
           "type": "object",
@@ -277,61 +347,96 @@ Extracting data from research papers using Structured Outputs
 
 ```javascript
 import OpenAI from "openai";
-import { z } from "zod";
-import { zodResponseFormat } from "openai/helpers/zod";
 
 const openai = new OpenAI();
 
-const ResearchPaperExtraction = z.object({
-  title: z.string(),
-  authors: z.array(z.string()),
-  abstract: z.string(),
-  keywords: z.array(z.string()),
+const response = await openai.responses.create({
+    model: "gpt-4o-2024-08-06",
+    input: [
+        {
+            role: "system",
+            content:
+                "You are an expert at structured data extraction. You will be given unstructured text from a research paper and should convert it into the given structure.",
+        },
+        { role: "user", content: "..." },
+    ],
+    text: {
+        format: {
+            type: "json_schema",
+            name: "research_paper_extraction",
+            schema: {
+                type: "object",
+                properties: {
+                    title: { type: "string" },
+                    authors: {
+                        type: "array",
+                        items: { type: "string" },
+                    },
+                    abstract: { type: "string" },
+                    keywords: {
+                        type: "array",
+                        items: { type: "string" },
+                    },
+                },
+                required: ["title", "authors", "abstract", "keywords"],
+                additionalProperties: false,
+            },
+            strict: true,
+        },
+    },
 });
 
-const completion = await openai.beta.chat.completions.parse({
-  model: "gpt-4o-2024-08-06",
-  messages: [
-    { role: "system", content: "You are an expert at structured data extraction. You will be given unstructured text from a research paper and should convert it into the given structure." },
-    { role: "user", content: "..." },
-  ],
-  response_format: zodResponseFormat(ResearchPaperExtraction, "research_paper_extraction"),
-});
-
-const research_paper = completion.choices[0].message.parsed;
+const research_paper = JSON.parse(response.output_text);
 ```
 
 ```python
-from pydantic import BaseModel
+import json
 from openai import OpenAI
 
 client = OpenAI()
 
-class ResearchPaperExtraction(BaseModel):
-    title: str
-    authors: list[str]
-    abstract: str
-    keywords: list[str]
-
-completion = client.beta.chat.completions.parse(
+response = client.responses.create(
     model="gpt-4o-2024-08-06",
-    messages=[
+    input=[
         {"role": "system", "content": "You are an expert at structured data extraction. You will be given unstructured text from a research paper and should convert it into the given structure."},
         {"role": "user", "content": "..."}
     ],
-    response_format=ResearchPaperExtraction,
+    text={
+        "format": {
+              "type": "json_schema",
+              "name": "research_paper_extraction",
+              "schema": {
+                "type": "object",
+                "properties": {
+                    "title": { "type": "string" },
+                    "authors": { 
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "abstract": { "type": "string" },
+                    "keywords": { 
+                        "type": "array", 
+                        "items": { "type": "string" }
+                    }
+                },
+                "required": ["title", "authors", "abstract", "keywords"],
+                "additionalProperties": False
+            },
+            "strict": True
+        },
+    },
 )
 
-research_paper = completion.choices[0].message.parsed
+research_paper = json.loads(response.output_text)
 ```
 
 ```bash
-curl https://api.openai.com/v1/chat/completions \
+curl https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o-2024-08-06",
-    "messages": [
+    "input": [
       {
         "role": "system",
         "content": "You are an expert at structured data extraction. You will be given unstructured text from a research paper and should convert it into the given structure."
@@ -341,9 +446,9 @@ curl https://api.openai.com/v1/chat/completions \
         "content": "..."
       }
     ],
-    "response_format": {
-      "type": "json_schema",
-      "json_schema": {
+    "text": {
+      "format": {
+        "type": "json_schema",
         "name": "research_paper_extraction",
         "schema": {
           "type": "object",
@@ -400,91 +505,157 @@ Generating HTML using Structured Outputs
 
 ```javascript
 import OpenAI from "openai";
-import { z } from "zod";
-import { zodResponseFormat } from "openai/helpers/zod";
 
 const openai = new OpenAI();
 
-const UI = z.lazy(() =>
-  z.object({
-    type: z.enum(["div", "button", "header", "section", "field", "form"]),
-    label: z.string(),
-    children: z.array(UI),
-    attributes: z.array(
-      z.object({
-        name: z.string(),
-        value: z.string(),
-      })
-    ),
-  })
-);
-
-const completion = await openai.beta.chat.completions.parse({
-  model: "gpt-4o-2024-08-06",
-  messages: [
-    {
-      role: "system",
-      content: "You are a UI generator AI. Convert the user input into a UI.",
+const response = await openai.responses.create({
+    model: "gpt-4o-2024-08-06",
+    input: [
+        {
+            role: "system",
+            content:
+                "You are a UI generator AI. Convert the user input into a UI.",
+        },
+        {
+            role: "user",
+            content: "Make a User Profile Form",
+        },
+    ],
+    text: {
+        format: {
+            type: "json_schema",
+            name: "ui",
+            description: "Dynamically generated UI",
+            schema: {
+                type: "object",
+                properties: {
+                    type: {
+                        type: "string",
+                        description: "The type of the UI component",
+                        enum: [
+                            "div",
+                            "button",
+                            "header",
+                            "section",
+                            "field",
+                            "form",
+                        ],
+                    },
+                    label: {
+                        type: "string",
+                        description:
+                            "The label of the UI component, used for buttons or form fields",
+                    },
+                    children: {
+                        type: "array",
+                        description: "Nested UI components",
+                        items: { $ref: "#" },
+                    },
+                    attributes: {
+                        type: "array",
+                        description:
+                            "Arbitrary attributes for the UI component, suitable for any element",
+                        items: {
+                            type: "object",
+                            properties: {
+                                name: {
+                                    type: "string",
+                                    description:
+                                        "The name of the attribute, for example onClick or className",
+                                },
+                                value: {
+                                    type: "string",
+                                    description: "The value of the attribute",
+                                },
+                            },
+                            required: ["name", "value"],
+                            additionalProperties: false,
+                        },
+                    },
+                },
+                required: ["type", "label", "children", "attributes"],
+                additionalProperties: false,
+            },
+            strict: true,
+        },
     },
-    { role: "user", content: "Make a User Profile Form" },
-  ],
-  response_format: zodResponseFormat(UI, "ui"),
 });
 
-const ui = completion.choices[0].message.parsed;
+const ui = JSON.parse(response.output_text);
 ```
 
 ```python
-from enum import Enum
-from typing import List
-from pydantic import BaseModel
+import json
 from openai import OpenAI
 
 client = OpenAI()
 
-class UIType(str, Enum):
-    div = "div"
-    button = "button"
-    header = "header"
-    section = "section"
-    field = "field"
-    form = "form"
-
-class Attribute(BaseModel):
-    name: str
-    value: str
-
-class UI(BaseModel):
-    type: UIType
-    label: str
-    children: List["UI"] 
-    attributes: List[Attribute]
-
-UI.model_rebuild() # This is required to enable recursive types
-
-class Response(BaseModel):
-    ui: UI
-
-completion = client.beta.chat.completions.parse(
+response = client.responses.create(
     model="gpt-4o-2024-08-06",
-    messages=[
+    input=[
         {"role": "system", "content": "You are a UI generator AI. Convert the user input into a UI."},
         {"role": "user", "content": "Make a User Profile Form"}
     ],
-    response_format=Response,
+    text={
+        "format": {
+            "type": "json_schema",
+            "name": "ui",
+            "description": "Dynamically generated UI",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "description": "The type of the UI component",
+                        "enum": ["div", "button", "header", "section", "field", "form"]
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "The label of the UI component, used for buttons or form fields"
+                    },
+                    "children": {
+                        "type": "array",
+                        "description": "Nested UI components",
+                        "items": {"$ref": "#"}
+                    },
+                    "attributes": {
+                        "type": "array",
+                        "description": "Arbitrary attributes for the UI component, suitable for any element",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                  "type": "string",
+                                  "description": "The name of the attribute, for example onClick or className"
+                              },
+                              "value": {
+                                  "type": "string",
+                                  "description": "The value of the attribute"
+                              }
+                          },
+                          "required": ["name", "value"],
+                          "additionalProperties": False
+                      }
+                    }
+                },
+                "required": ["type", "label", "children", "attributes"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
 )
 
-ui = completion.choices[0].message.parsed
-print(ui)
+ui = json.loads(response.output_text)
 ```
 
 ```bash
-curl https://api.openai.com/v1/chat/completions \
+curl https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o-2024-08-06",
-    "messages": [
+    "input": [
       {
         "role": "system",
         "content": "You are a UI generator AI. Convert the user input into a UI."
@@ -494,9 +665,9 @@ curl https://api.openai.com/v1/chat/completions \
         "content": "Make a User Profile Form"
       }
     ],
-    "response_format": {
-      "type": "json_schema",
-      "json_schema": {
+    "text": {
+      "format": {
+        "type": "json_schema",
         "name": "ui",
         "description": "Dynamically generated UI",
         "schema": {
@@ -632,66 +803,12 @@ Moderation using Structured Outputs
 
 ```javascript
 import OpenAI from "openai";
-import { z } from "zod";
-import { zodResponseFormat } from "openai/helpers/zod";
 
 const openai = new OpenAI();
 
-const ContentCompliance = z.object({
-  is_violating: z.boolean(),
-  category: z.enum(["violence", "sexual", "self_harm"]).nullable(),
-  explanation_if_violating: z.string().nullable(),
-});
-
-const completion = await openai.beta.chat.completions.parse({
-  model: "gpt-4o-2024-08-06",
-  messages: [
-    { role: "system", content: "Determine if the user input violates specific guidelines and explain if they do." },
-    { role: "user", content: "How do I prepare for a job interview?" },
-  ],
-  response_format: zodResponseFormat(ContentCompliance, "content_compliance"),
-});
-
-const compliance = completion.choices[0].message.parsed;
-```
-
-```python
-from enum import Enum
-from typing import Optional
-from pydantic import BaseModel
-from openai import OpenAI
-
-client = OpenAI()
-
-class Category(str, Enum):
-    violence = "violence"
-    sexual = "sexual"
-    self_harm = "self_harm"
-
-class ContentCompliance(BaseModel):
-    is_violating: bool
-    category: Optional[Category]
-    explanation_if_violating: Optional[str]
-
-completion = client.beta.chat.completions.parse(
-    model="gpt-4o-2024-08-06",
-    messages=[
-        {"role": "system", "content": "Determine if the user input violates specific guidelines and explain if they do."},
-        {"role": "user", "content": "How do I prepare for a job interview?"}
-    ],
-    response_format=ContentCompliance,
-)
-
-compliance = completion.choices[0].message.parsed
-```
-
-```bash
-curl https://api.openai.com/v1/chat/completions \
-  -H "Authorization: Bearer $OPENAI_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4o-2024-08-06",
-    "messages": [
+const response = await openai.responses.create({
+    model: "gpt-4o-2024-08-06",
+    input: [
       {
         "role": "system",
         "content": "Determine if the user input violates specific guidelines and explain if they do."
@@ -701,9 +818,103 @@ curl https://api.openai.com/v1/chat/completions \
         "content": "How do I prepare for a job interview?"
       }
     ],
-    "response_format": {
-      "type": "json_schema",
-      "json_schema": {
+    text: {
+        format: {
+          "type": "json_schema",
+          "name": "content_compliance",
+          "description": "Determines if content is violating specific moderation rules",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "is_violating": {
+                "type": "boolean",
+                "description": "Indicates if the content is violating guidelines"
+              },
+              "category": {
+                "type": ["string", "null"],
+                "description": "Type of violation, if the content is violating guidelines. Null otherwise.",
+                "enum": ["violence", "sexual", "self_harm"]
+              },
+              "explanation_if_violating": {
+                "type": ["string", "null"],
+                "description": "Explanation of why the content is violating"
+              }
+            },
+            "required": ["is_violating", "category", "explanation_if_violating"],
+            "additionalProperties": false
+          },
+          "strict": true
+        },
+    },
+});
+
+const compliance = JSON.parse(response.output_text);
+```
+
+```python
+import json
+from openai import OpenAI
+
+client = OpenAI()
+
+response = client.responses.create(
+    model="gpt-4o-2024-08-06",
+    input=[
+        {"role": "system", "content": "Determine if the user input violates specific guidelines and explain if they do."},
+        {"role": "user", "content": "How do I prepare for a job interview?"}
+    ],
+    text={
+        "format": {
+            "type": "json_schema",
+            "name": "content_compliance",
+            "description": "Determines if content is violating specific moderation rules",
+            "schema": {
+            "type": "object",
+            "properties": {
+                "is_violating": {
+                    "type": "boolean",
+                   "description": "Indicates if the content is violating guidelines"
+                },
+                "category": {
+                "type": ["string", "null"],
+                    "description": "Type of violation, if the content is violating guidelines. Null otherwise.",
+                    "enum": ["violence", "sexual", "self_harm"]
+                },
+                "explanation_if_violating": {
+                    "type": ["string", "null"],
+                    "description": "Explanation of why the content is violating"
+                }
+            },
+                "required": ["is_violating", "category", "explanation_if_violating"],
+                "additionalProperties": False
+            },
+            "strict": True
+        },
+    },
+)
+
+compliance = json.loads(response.output_text)
+```
+
+```bash
+curl https://api.openai.com/v1/responses \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-2024-08-06",
+    "input": [
+      {
+        "role": "system",
+        "content": "Determine if the user input violates specific guidelines and explain if they do."
+      },
+      {
+        "role": "user",
+        "content": "How do I prepare for a job interview?"
+      }
+    ],
+    "text": {
+      "format": {
+        "type": "json_schema",
         "name": "content_compliance",
         "description": "Determines if content is violating specific moderation rules",
         "schema": {
@@ -742,209 +953,8 @@ curl https://api.openai.com/v1/chat/completions \
 }
 ```
 
-How to use Structured Outputs with response\_format
----------------------------------------------------
-
-You can use Structured Outputs with the new SDK helper to parse the model's output into your desired format, or you can specify the JSON schema directly.
-
-**Note:** the first request you make with any schema will have additional latency as our API processes the schema, but subsequent requests with the same schema will not have additional latency.
-
-SDK objects
-
-Step 1: Define your object
-
-First you must define an object or data structure to represent the JSON Schema that the model should be constrained to follow. See the [examples](/docs/guides/structured-outputs#examples) at the top of this guide for reference.
-
-While Structured Outputs supports much of JSON Schema, some features are unavailable either for performance or technical reasons. See [here](/docs/guides/structured-outputs#supported-schemas) for more details.
-
-For example, you can define an object like this:
-
-```python
-from pydantic import BaseModel
-
-class Step(BaseModel):
-    explanation: str
-    output: str
-
-class MathResponse(BaseModel):
-    steps: list[Step]
-    final_answer: str
-```
-
-```javascript
-import { z } from "zod";
-import { zodResponseFormat } from "openai/helpers/zod";
-
-const Step = z.object({
-  explanation: z.string(),
-  output: z.string(),
-});
-
-const MathResponse = z.object({
-  steps: z.array(Step),
-  final_answer: z.string(),
-});
-```
-
-#### Tips for your data structure
-
-To maximize the quality of model generations, we recommend the following:
-
-*   Name keys clearly and intuitively
-*   Create clear titles and descriptions for important keys in your structure
-*   Create and use evals to determine the structure that works best for your use case
-
-Step 2: Supply your object in the API call
-
-You can use the `parse` method to automatically parse the JSON response into the object you defined.
-
-Under the hood, the SDK takes care of supplying the JSON schema corresponding to your data structure, and then parsing the response as an object.
-
-```python
-completion = client.beta.chat.completions.parse(
-    model="gpt-4o-2024-08-06",
-    messages=[
-        {"role": "system", "content": "You are a helpful math tutor. Guide the user through the solution step by step."},
-        {"role": "user", "content": "how can I solve 8x + 7 = -23"}
-    ],
-    response_format=MathResponse
-  )
-```
-
-```javascript
-const completion = await openai.beta.chat.completions.parse({
-  model: "gpt-4o-2024-08-06",
-  messages: [
-    { role: "system", content: "You are a helpful math tutor. Guide the user through the solution step by step." },
-    { role: "user", content: "how can I solve 8x + 7 = -23" },
-  ],
-  response_format: zodResponseFormat(MathResponse, "math_response"),
-});
-```
-
-Step 3: Handle edge cases
-
-In some cases, the model might not generate a valid response that matches the provided JSON schema.
-
-This can happen in the case of a refusal, if the model refuses to answer for safety reasons, or if for example you reach a max tokens limit and the response is incomplete.
-
-```javascript
-try {
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-2024-08-06",
-    messages: [{
-        role: "system",
-        content: "You are a helpful math tutor. Guide the user through the solution step by step.",
-      },
-      {
-        role: "user",
-        content: "how can I solve 8x + 7 = -23"
-      },
-    ],
-    store: true,
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "math_response",
-        schema: {
-          type: "object",
-          properties: {
-            steps: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  explanation: {
-                    type: "string"
-                  },
-                  output: {
-                    type: "string"
-                  },
-                },
-                required: ["explanation", "output"],
-                additionalProperties: false,
-              },
-            },
-            final_answer: {
-              type: "string"
-            },
-          },
-          required: ["steps", "final_answer"],
-          additionalProperties: false,
-        },
-        strict: true,
-      },
-    },
-    max_tokens: 50,
-  });
-
-  if (completion.choices[0].finish_reason === "length") {
-    // Handle the case where the model did not return a complete response
-    throw new Error("Incomplete response");
-  }
-
-  const math_response = completion.choices[0].message;
-
-  if (math_response.refusal) {
-    // handle refusal
-    console.log(math_response.refusal);
-  } else if (math_response.content) {
-    console.log(math_response.content);
-  } else {
-    throw new Error("No response content");
-  }
-} catch (e) {
-  // Handle edge cases
-  console.error(e);
-}
-```
-
-```python
-try:
-    response = client.chat.completions.create(
-        model="gpt-4o-2024-08-06",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful math tutor. Guide the user through the solution step by step.",
-            },
-            {"role": "user", "content": "how can I solve 8x + 7 = -23"},
-        ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "math_response",
-                "strict": True,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "steps": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "explanation": {"type": "string"},
-                                    "output": {"type": "string"},
-                                },
-                                "required": ["explanation", "output"],
-                                "additionalProperties": False,
-                            },
-                        },
-                        "final_answer": {"type": "string"},
-                    },
-                    "required": ["steps", "final_answer"],
-                    "additionalProperties": False,
-                },
-            },
-        },
-        strict=True,
-    )
-except Exception as e:
-    # handle errors like finish_reason, refusal, content_filter, etc.
-    pass
-```
-
-Manual schema
+How to use Structured Outputs with text.format
+----------------------------------------------
 
 Step 1: Define your schema
 
@@ -965,22 +975,22 @@ Step 2: Supply your schema in the API call
 To use Structured Outputs, simply specify
 
 ```json
-response_format: { "type": "json_schema", "json_schema": … , "strict": true }
+text: { format: { type: "json_schema", "strict": true, "schema": … } }
 ```
 
 For example:
 
 ```python
-response = client.chat.completions.create(
+response = client.responses.create(
     model="gpt-4o-2024-08-06",
-    messages=[
+    input=[
         {"role": "system", "content": "You are a helpful math tutor. Guide the user through the solution step by step."},
         {"role": "user", "content": "how can I solve 8x + 7 = -23"}
     ],
-    response_format={
-        "type": "json_schema",
-        "json_schema": {
-            "name": "math_response",
+    text={
+        "format": {
+            "type": "json_schema",
+            "name": "calendar_event",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -1006,20 +1016,19 @@ response = client.chat.completions.create(
     }
 )
 
-print(response.choices[0].message.content)
+print(response.output_text)
 ```
 
 ```javascript
-const response = await openai.chat.completions.create({
+const response = await openai.responses.create({
     model: "gpt-4o-2024-08-06",
-    messages: [
+    input: [
         { role: "system", content: "You are a helpful math tutor. Guide the user through the solution step by step." },
         { role: "user", content: "how can I solve 8x + 7 = -23" }
     ],
-    store: true,
-    response_format: {
-        type: "json_schema",
-        json_schema: {
+    text: {
+        format: {
+            type: "json_schema",
             name: "math_response",
             schema: {
                 type: "object",
@@ -1046,16 +1055,16 @@ const response = await openai.chat.completions.create({
     }
 });
 
-console.log(response.choices[0].message.content);
+console.log(response.output_text);
 ```
 
 ```bash
-curl https://api.openai.com/v1/chat/completions \
+curl https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o-2024-08-06",
-    "messages": [
+    "input": [
       {
         "role": "system",
         "content": "You are a helpful math tutor. Guide the user through the solution step by step."
@@ -1065,9 +1074,9 @@ curl https://api.openai.com/v1/chat/completions \
         "content": "how can I solve 8x + 7 = -23"
       }
     ],
-    "response_format": {
-      "type": "json_schema",
-      "json_schema": {
+    "text": {
+      "format": {
+        "type": "json_schema",
         "name": "math_response",
         "schema": {
           "type": "object",
@@ -1105,9 +1114,9 @@ This can happen in the case of a refusal, if the model refuses to answer for saf
 
 ```javascript
 try {
-  const completion = await openai.chat.completions.create({
+  const response = await openai.responses.create({
     model: "gpt-4o-2024-08-06",
-    messages: [{
+    input: [{
         role: "system",
         content: "You are a helpful math tutor. Guide the user through the solution step by step.",
       },
@@ -1116,10 +1125,10 @@ try {
         content: "how can I solve 8x + 7 = -23"
       },
     ],
-    store: true,
-    response_format: {
-      type: "json_schema",
-      json_schema: {
+    max_output_tokens: 50,
+    text: {
+      format: {
+        type: "json_schema",
         name: "math_response",
         schema: {
           type: "object",
@@ -1149,22 +1158,21 @@ try {
         },
         strict: true,
       },
-    },
-    max_tokens: 50,
+    }
   });
 
-  if (completion.choices[0].finish_reason === "length") {
+  if (response.status === "incomplete" && response.incomplete_details.reason === "max_output_tokens") {
     // Handle the case where the model did not return a complete response
     throw new Error("Incomplete response");
   }
 
-  const math_response = completion.choices[0].message;
+  const math_response = response.output[0].content[0];
 
-  if (math_response.refusal) {
+  if (math_response.type === "refusal") {
     // handle refusal
     console.log(math_response.refusal);
-  } else if (math_response.content) {
-    console.log(math_response.content);
+  } else if (math_response.type === "output_text") {
+    console.log(math_response.text);
   } else {
     throw new Error("No response content");
   }
@@ -1176,18 +1184,18 @@ try {
 
 ```python
 try:
-    response = client.chat.completions.create(
+    response = client.responses.create(
         model="gpt-4o-2024-08-06",
-        messages=[
+        input=[
             {
                 "role": "system",
                 "content": "You are a helpful math tutor. Guide the user through the solution step by step.",
             },
             {"role": "user", "content": "how can I solve 8x + 7 = -23"},
         ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
+        text={
+            "format": {
+                "type": "json_schema",
                 "name": "math_response",
                 "strict": True,
                 "schema": {
@@ -1210,64 +1218,13 @@ try:
                     "required": ["steps", "final_answer"],
                     "additionalProperties": False,
                 },
+                "strict": True,
             },
         },
-        strict=True,
     )
 except Exception as e:
     # handle errors like finish_reason, refusal, content_filter, etc.
     pass
-```
-
-Step 4: Use the generated structured data in a type-safe way
-
-Typically, when using Structured Outputs you will have a type or class in the type-system of your programming language representing the JSON Schema as an object.
-
-Once you have confirmed that you have received the JSON guaranteed to match the schema you requested, you can now safely parse it to the corresponding type.
-
-For example:
-
-```python
-from pydantic import BaseModel, ValidationError
-from typing import List
-
-# Define types that match the JSON Schema using pydantic models
-class Step(BaseModel):
-    explanation: str
-    output: str
-
-class Solution(BaseModel):
-    steps: List[Step]
-    final_answer: str
-
-...
-
-try:
-    # Parse and validate the response content
-    solution = Solution.parse_raw(response.choices[0].message.content)
-    print(solution)
-except ValidationError as e:
-    # Handle validation errors
-    print(e.json())
-```
-
-```javascript
-// Here we specify types in TypeScript that exactly match the JSON Schema we provided when calling the OpenAI API. Note that these *must* be kept in sync.
-
-type Step = {
-  explanation: string;
-  output: string;
-};
-
-type Solution = {
-  steps: Step[];
-  final_answer: string;
-};
-
-...
-
-// Now so long as the JSON Schema we created was exactly equivalent to our TypeScript types, this is type-safe
-const solution = JSON.parse(response.choices[0].message.content)) as Solution
 ```
 
 ### Refusals with Structured Outputs
@@ -1337,32 +1294,35 @@ The API response from a refusal will look something like this:
 
 ```json
 {
-  "id": "chatcmpl-9nYAG9LPNonX8DAyrkwYfemr3C8HC",
-  "object": "chat.completion",
-  "created": 1721596428,
+  "id": "resp_1234567890",
+  "object": "response",
+  "created_at": 1721596428,
+  "status": "completed",
+  "error": null,
+  "incomplete_details": null,
+  "input": [],
+  "instructions": null,
+  "max_output_tokens": null,
   "model": "gpt-4o-2024-08-06",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
+  "output": [{
+    "id": "msg_1234567890",
+    "type": "message",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "refusal",
         "refusal": "I'm sorry, I cannot assist with that request."
-      },
-      "logprobs": null,
-      "finish_reason": "stop"
-    }
-  ],
+      }
+    ]
+  }],
   "usage": {
-    "prompt_tokens": 81,
-    "completion_tokens": 11,
+    "input_tokens": 81,
+    "output_tokens": 11,
     "total_tokens": 92,
-    "completion_tokens_details": {
+    "output_tokens_details": {
       "reasoning_tokens": 0,
-      "accepted_prediction_tokens": 0,
-      "rejected_prediction_tokens": 0
     }
   },
-  "system_fingerprint": "fp_3407719c7f"
 }
 ```
 
@@ -1380,12 +1340,6 @@ You could include language in your prompt to specify that you want to return emp
 
 Structured Outputs can still contain mistakes. If you see mistakes, try adjusting your instructions, providing examples in the system instructions, or splitting tasks into simpler subtasks. Refer to the [prompt engineering guide](/docs/guides/prompt-engineering) for more guidance on how to tweak your inputs.
 
-#### Avoid JSON schema divergence
-
-To prevent your JSON Schema and corresponding types in your programming language from diverging, we strongly recommend using the native Pydantic/zod sdk support.
-
-If you prefer to specify the JSON schema directly, you could add CI rules that flag when either the JSON schema or underlying data objects are edited, or add a CI step that auto-generates the JSON Schema from type definitions (or vice-versa).
-
 Streaming
 ---------
 
@@ -1395,159 +1349,108 @@ That way, you don't have to wait for the entire response to complete before hand
 
 We recommend relying on the SDKs to handle streaming with Structured Outputs.
 
-You can find an example of how to stream function call arguments without the SDK `stream` helper in the [function calling guide](/docs/guides/function-calling#advanced-usage).
-
-Here is how you can stream a model response with the `stream` helper:
-
 ```python
-from typing import List
-from pydantic import BaseModel
 from openai import OpenAI
-
-class EntitiesModel(BaseModel):
-    attributes: List[str]
-    colors: List[str]
-    animals: List[str]
 
 client = OpenAI()
 
-with client.beta.chat.completions.stream(
+stream = client.responses.create(
     model="gpt-4o",
-    messages=[
+    input=[
         {"role": "system", "content": "Extract entities from the input text"},
         {
             "role": "user",
-            "content": "The quick brown fox jumps over the lazy dog with piercing blue eyes",
+            "content": "The quick brown fox jumps over the lazy dog with piercing blue eyes"
         },
     ],
-    response_format=EntitiesModel,
-) as stream:
-    for event in stream:
-        if event.type == "content.delta":
-            if event.parsed is not None:
-                # Print the parsed data as JSON
-                print("content.delta parsed:", event.parsed)
-        elif event.type == "content.done":
-            print("content.done")
-        elif event.type == "error":
-            print("Error in stream:", event.error)
+    text={
+        "format": {
+            "type": "json_schema",
+            "name": "entities",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "attributes": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "colors": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "animals": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    }
+                },
+                "required": ["attributes", "colors", "animals"],
+                "additionalProperties": False
+            },
+        }
+    },
+    stream=True,
+)
 
-final_completion = stream.get_final_completion()
-print("Final completion:", final_completion)
+for event in stream:
+    if event.type == 'response.refusal.delta':
+        print(event.delta, end="")
+    elif event.type == 'response.output_text.delta':
+        print(event.delta, end="")
+    elif event.type == 'response.error':
+        print(event.error, end="")
+    elif event.type == 'response.completed':
+        print("Completed")
+        # print(event.response.output)
 ```
 
 ```javascript
-import OpenAI from "openai";
-import { zodResponseFormat } from "openai/helpers/zod";
-import { z } from "zod";
-export const openai = new OpenAI();
+import { OpenAI } from "openai";
 
-const EntitiesSchema = z.object({
-  attributes: z.array(z.string()),
-  colors: z.array(z.string()),
-  animals: z.array(z.string()),
+const openai = new OpenAI();
+
+const stream = await openai.responses.create({
+    model: "gpt-4o",
+    input: [{ role: "user", content: "What's the weather like in Paris today?" }],
+    stream: true,
+    text: {
+        "format": {
+            "type": "json_schema",
+            "name": "entities",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "attributes": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "colors": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "animals": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    }
+                },
+                "required": ["attributes", "colors", "animals"],
+                "additionalProperties": false
+            },
+        }
+    }
 });
 
-const stream = openai.beta.chat.completions
-  .stream({
-    model: "gpt-4o",
-    messages: [
-      { role: "system", content: "Extract entities from the input text" },
-      {
-        role: "user",
-        content:
-          "The quick brown fox jumps over the lazy dog with piercing blue eyes",
-      },
-    ],
-    response_format: zodResponseFormat(EntitiesSchema, "entities"),
-  })
-  .on("refusal.done", () => console.log("request refused"))
-  .on("content.delta", ({ snapshot, parsed }) => {
-    console.log("content:", snapshot);
-    console.log("parsed:", parsed);
-    console.log();
-  })
-  .on("content.done", (props) => {
-    console.log(props);
-  });
-
-await stream.done();
-
-const finalCompletion = await stream.finalChatCompletion();
-
-console.log(finalCompletion);
-```
-
-You can also use the `stream` helper to parse function call arguments:
-
-```python
-from pydantic import BaseModel
-import openai
-from openai import OpenAI
-
-class GetWeather(BaseModel):
-    city: str
-    country: str
-
-client = OpenAI()
-
-with client.beta.chat.completions.stream(
-    model="gpt-4o",
-    messages=[
-        {
-            "role": "user",
-            "content": "What's the weather like in SF and London?",
-        },
-    ],
-    tools=[
-        openai.pydantic_function_tool(GetWeather, name="get_weather"),
-    ],
-    parallel_tool_calls=True,
-) as stream:
-    for event in stream:
-        if event.type == "tool_calls.function.arguments.delta" or event.type == "tool_calls.function.arguments.done":
-            print(event)
-
-print(stream.get_final_completion())
-```
-
-```javascript
-import { zodFunction } from "openai/helpers/zod";
-import OpenAI from "openai/index";
-import { z } from "zod";
-
-const GetWeatherArgs = z.object({
-  city: z.string(),
-  country: z.string(),
-});
-
-const client = new OpenAI();
-
-const stream = client.beta.chat.completions
-  .stream({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "user",
-        content: "What's the weather like in SF and London?",
-      },
-    ],
-    tools: [zodFunction({ name: "get_weather", parameters: GetWeatherArgs })],
-  })
-  .on("tool_calls.function.arguments.delta", (props) =>
-    console.log("tool_calls.function.arguments.delta", props)
-  )
-  .on("tool_calls.function.arguments.done", (props) =>
-    console.log("tool_calls.function.arguments.done", props)
-  )
-  .on("refusal.delta", ({ delta }) => {
-    process.stdout.write(delta);
-  })
-  .on("refusal.done", () => console.log("request refused"));
-
-const completion = await stream.finalChatCompletion();
-
-console.log("final completion:", completion);
+for await (const event of stream) {
+    if (event.type === 'response.refusal.delta') {
+        process.stdout.write(event.delta);
+    } else if (event.type === 'response.output_text.delta') {
+        process.stdout.write(event.delta);
+    } else if (event.type === 'response.error') {
+        process.stdout.write(event.error);  
+    } else if (event.type === 'response.completed') {
+        console.log("Completed")
+        // console.log(event.response.output);
+    }
+}
 ```
 
 Supported schemas
@@ -1915,7 +1818,7 @@ JSON mode is a more basic version of the Structured Outputs feature. While JSON 
 
 When JSON mode is turned on, the model's output is ensured to be valid JSON, except for in some edge cases that you should detect and handle appropriately.
 
-To turn on JSON mode with the Chat Completions or Assistants API you can set the `response_format` to `{ "type": "json_object" }`. If you are using function calling, JSON mode is always turned on.
+To turn on JSON mode with the Responses API you can set the `text.format` to `{ "type": "json_object" }`. If you are using function calling, JSON mode is always turned on.
 
 Important notes:
 
@@ -1929,45 +1832,44 @@ Handling edge cases
 const we_did_not_specify_stop_tokens = true;
 
 try {
-  const response = await openai.chat.completions.create({
+  const response = await openai.responses.create({
     model: "gpt-3.5-turbo-0125",
-    messages: [
+    input: [
       {
         role: "system",
         content: "You are a helpful assistant designed to output JSON.",
       },
       { role: "user", content: "Who won the world series in 2020? Please respond in the format {winner: ...}" },
     ],
-    store: true,
-    response_format: { type: "json_object" },
+    text: { format: { type: "json_object" } },
   });
 
   // Check if the conversation was too long for the context window, resulting in incomplete JSON 
-  if (response.choices[0].message.finish_reason === "length") {
+  if (response.status === "incomplete" && response.incomplete_details.reason === "max_output_tokens") {
     // your code should handle this error case
   }
 
   // Check if the OpenAI safety system refused the request and generated a refusal instead
-  if (response.choices[0].message[0].refusal) {
+  if (response.output[0].content[0].type === "refusal") {
     // your code should handle this error case
     // In this case, the .content field will contain the explanation (if any) that the model generated for why it is refusing
-    console.log(response.choices[0].message[0].refusal)
+    console.log(response.output[0].content[0].refusal)
   }
 
   // Check if the model's output included restricted content, so the generation of JSON was halted and may be partial
-  if (response.choices[0].message.finish_reason === "content_filter") {
+  if (response.status === "incomplete" && response.incomplete_details.reason === "content_filter") {
     // your code should handle this error case
   }
 
-  if (response.choices[0].message.finish_reason === "stop") {
+  if (response.status === "completed") {
     // In this case the model has either successfully finished generating the JSON object according to your schema, or the model generated one of the tokens you provided as a "stop token"
 
     if (we_did_not_specify_stop_tokens) {
       // If you didn't specify any stop tokens, then the generation is complete and the content key will contain the serialized JSON object
       // This will parse successfully and should now contain  {"winner": "Los Angeles Dodgers"}
-      console.log(JSON.parse(response.choices[0].message.content))
+      console.log(JSON.parse(response.output_text))
     } else {
-      // Check if the response.choices[0].message.content ends with one of your stop tokens and handle appropriately
+      // Check if the response.output_text ends with one of your stop tokens and handle appropriately
     }
   }
 } catch (e) {
@@ -1980,40 +1882,40 @@ try {
 we_did_not_specify_stop_tokens = True
 
 try:
-    response = client.chat.completions.create(
+    response = client.responses.create(
         model="gpt-3.5-turbo-0125",
-        messages=[
+        input=[
             {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
             {"role": "user", "content": "Who won the world series in 2020? Please respond in the format {winner: ...}"}
         ],
-        response_format={"type": "json_object"}
+        text={"format": {"type": "json_object"}}
     )
 
     # Check if the conversation was too long for the context window, resulting in incomplete JSON 
-    if response.choices[0].message.finish_reason == "length":
+    if response.status == "incomplete" and response.incomplete_details.reason == "max_output_tokens":
         # your code should handle this error case
         pass
 
     # Check if the OpenAI safety system refused the request and generated a refusal instead
-    if response.choices[0].message[0].get("refusal"):
+    if response.output[0].content[0].type == "refusal":
         # your code should handle this error case
         # In this case, the .content field will contain the explanation (if any) that the model generated for why it is refusing
-        print(response.choices[0].message[0]["refusal"])
+        print(response.output[0].content[0]["refusal"])
 
     # Check if the model's output included restricted content, so the generation of JSON was halted and may be partial
-    if response.choices[0].message.finish_reason == "content_filter":
+    if response.status == "incomplete" and response.incomplete_details.reason == "content_filter":
         # your code should handle this error case
         pass
 
-    if response.choices[0].message.finish_reason == "stop":
+    if response.status == "completed":
         # In this case the model has either successfully finished generating the JSON object according to your schema, or the model generated one of the tokens you provided as a "stop token"
 
         if we_did_not_specify_stop_tokens:
             # If you didn't specify any stop tokens, then the generation is complete and the content key will contain the serialized JSON object
             # This will parse successfully and should now contain  "{"winner": "Los Angeles Dodgers"}"
-            print(response.choices[0].message.content)
+            print(response.output_text)
         else:
-            # Check if the response.choices[0].message.content ends with one of your stop tokens and handle appropriately
+            # Check if the response.output_text ends with one of your stop tokens and handle appropriately
             pass
 except Exception as e:
     # Your code should handle errors here, for example a network error calling the API
@@ -2027,5 +1929,3 @@ To learn more about Structured Outputs, we recommend browsing the following reso
 
 *   Check out our [introductory cookbook](https://cookbook.openai.com/examples/structured_outputs_intro) on Structured Outputs
 *   Learn [how to build multi-agent systems](https://cookbook.openai.com/examples/structured_outputs_multi_agent) with Structured Outputs
-
-Was this page useful?
