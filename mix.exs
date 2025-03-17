@@ -46,17 +46,21 @@ defmodule OpenaiResponses.MixProject do
       # Define the structure of documentation
       extras: [
         "README.md",
+        "docs/structured_output.md",
         "notebooks/tutorial.livemd"
       ],
       # Group documentation sections
       groups_for_extras: [
-        Guides: ~r/README\.md/,
+        Guides: ["README.md", "docs/structured_output.md"],
         "Interactive Tutorials": ~r/\.livemd$/
       ],
       # Order of modules in sidebar
       groups_for_modules: [
         "Client API": [
           OpenAI.Responses
+        ],
+        "Schema Definition": [
+          OpenAI.Responses.Schema
         ],
         Utilities: [
           OpenAI.Responses.Stream,

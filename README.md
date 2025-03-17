@@ -1,4 +1,4 @@
-# OpenAI.Responses
+# Basic Usage
 
 A simple Elixir client for the OpenAI Responses API, built on top of
 [Req](https://github.com/wojtekmach/req).

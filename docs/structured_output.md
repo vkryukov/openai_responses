@@ -1,4 +1,4 @@
-# Structured Outputs for OpenAI Responses
+# Structured Outputs
 
 This document explains how to use the structured outputs feature with the OpenAI Responses Elixir library.
 
