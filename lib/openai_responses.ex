@@ -349,16 +349,26 @@ defmodule OpenAI.Responses do
   @spec parse(String.t(), String.t() | map() | list(), map(), keyword()) ::
           {:ok, map()} | {:error, any()}
   def parse(model, input, schema, opts \\ []) do
-    _schema_name = Keyword.get(opts, :schema_name, "data")
+    schema_name = Keyword.get(opts, :schema_name, "data")
+    strict = Keyword.get(opts, :strict, true)
 
-    # Prepare the response format with the schema
-    response_format = %{
-      type: "json_schema",
-      schema: schema
+    # Prepare the text format with the schema according to the new API format
+    text_format = %{
+      format: %{
+        type: "json_schema",
+        name: schema_name,
+        schema: schema,
+        strict: strict
+      }
     }
 
-    # Add the response format to the options
-    opts = Keyword.put(opts, :response_format, response_format)
+    # Construct a system message that instructs the model to extract structured data
+    system_message = "Extract the #{schema_name} information."
+
+    # Add the text format and system message to the options
+    opts = opts
+           |> Keyword.put(:text, text_format)
+           |> Keyword.put(:instructions, system_message)
 
     case create(model, input, opts) do
       {:ok, response} ->
@@ -419,16 +429,26 @@ defmodule OpenAI.Responses do
   @spec parse_stream(String.t(), String.t() | map() | list(), map(), keyword()) ::
           Enumerable.t()
   def parse_stream(model, input, schema, opts \\ []) do
-    _schema_name = Keyword.get(opts, :schema_name, "data")
+    schema_name = Keyword.get(opts, :schema_name, "data")
+    strict = Keyword.get(opts, :strict, true)
 
-    # Prepare the response format with the schema
-    response_format = %{
-      type: "json_schema",
-      schema: schema
+    # Prepare the text format with the schema according to the new API format
+    text_format = %{
+      format: %{
+        type: "json_schema",
+        name: schema_name,
+        schema: schema,
+        strict: strict
+      }
     }
 
-    # Add the response format to the options
-    opts = Keyword.put(opts, :response_format, response_format)
+    # Construct a system message that instructs the model to extract structured data
+    system_message = "Extract the #{schema_name} information."
+
+    # Add the text format and system message to the options
+    opts = opts
+           |> Keyword.put(:text, text_format)
+           |> Keyword.put(:instructions, system_message)
 
     # Get the stream
     stream = stream(model, input, opts)
@@ -446,14 +466,36 @@ defmodule OpenAI.Responses do
   # Helper function to extract parsed data from a response
   defp extract_parsed_data(response) do
     case response do
+      # Check for output_text in the new API format
+      %{"output_text" => output_text} when is_binary(output_text) ->
+        try do
+          {:ok, Jason.decode!(output_text)}
+        rescue
+          e -> {:error, "Failed to parse JSON from output_text: #{inspect(e)}"}
+        end
+
+      # Check for structured output in the output array
+      %{"output" => [%{"content" => [%{"type" => "output_text", "text" => json_text}]}]} ->
+        try do
+          {:ok, Jason.decode!(json_text)}
+        rescue
+          e -> {:error, "Failed to parse JSON from output content: #{inspect(e)}"}
+        end
+
+      # Check for structured output in a message content array
       %{"output" => output} when is_list(output) ->
-        # Look for a message with parsed content
+        # Look for a message with JSON content
         Enum.find_value(output, {:error, "No parsed data found"}, fn item ->
           case item do
-            %{"type" => "message", "content" => content} when is_list(content) ->
-              # Look for parsed content in the message
+            %{"content" => content} when is_list(content) ->
+              # Look for text content that might be JSON
               Enum.find_value(content, nil, fn
-                %{"type" => "parsed", "parsed" => parsed} -> {:ok, parsed}
+                %{"type" => "output_text", "text" => text} ->
+                  try do
+                    {:ok, Jason.decode!(text)}
+                  rescue
+                    _ -> nil
+                  end
                 _ -> nil
               end)
 
@@ -461,6 +503,14 @@ defmodule OpenAI.Responses do
               nil
           end
         end)
+
+      # Try direct content access if it's a simple response
+      %{"content" => content} when is_binary(content) ->
+        try do
+          {:ok, Jason.decode!(content)}
+        rescue
+          _ -> {:error, "Content is not valid JSON"}
+        end
 
       _ ->
         {:error, "Invalid response format"}
@@ -470,12 +520,40 @@ defmodule OpenAI.Responses do
   # Helper function to extract parsed data from a stream chunk
   defp extract_parsed_data_from_chunk(chunk) do
     case chunk do
-      %{"type" => "message_delta", "delta" => %{"content" => content}} when is_list(content) ->
-        # Look for parsed content in the delta
+      # Handle output_text delta in the new API format
+      %{"delta" => %{"output_text" => output_text}} when is_binary(output_text) and output_text != "" ->
+        try do
+          {:ok, Jason.decode!(output_text)}
+        rescue
+          _ -> {:error, "Failed to parse JSON from output_text chunk"}
+        end
+
+      # Handle structured output in delta content for output_text type
+      %{"delta" => %{"content" => [%{"type" => "output_text", "text" => json_text}]}} ->
+        try do
+          {:ok, Jason.decode!(json_text)}
+        rescue
+          _ -> {:error, "Failed to parse JSON from chunk"}
+        end
+
+      # Handle any text in content array that might be JSON
+      %{"delta" => %{"content" => content}} when is_list(content) ->
+        # Look for text content that might be JSON
         Enum.find_value(content, {:error, "No parsed data found"}, fn
-          %{"type" => "parsed", "parsed" => parsed} -> {:ok, parsed}
+          %{"type" => "output_text", "text" => text} ->
+            try do
+              {:ok, Jason.decode!(text)}
+            rescue
+              _ -> nil
+            end
           _ -> nil
         end)
+
+      # Handle text chunks that might contain JSON
+      %{"delta" => %{"content" => content}} when is_binary(content) and content != "" ->
+        # We can't parse partial JSON, so we'll return an error
+        # The complete JSON will be handled when the stream is collected
+        {:error, "Partial content chunk"}
 
       _ ->
         {:error, "No parsed data in chunk"}

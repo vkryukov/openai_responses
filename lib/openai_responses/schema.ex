@@ -63,6 +63,7 @@ defmodule OpenAI.Responses.Schema do
   """
   def object(fields, opts \\ []) do
     name = Keyword.get(opts, :name)
+    additional_properties = Keyword.get(opts, :additional_properties, false)
     
     # Process each field to convert atoms and tuples to proper schema objects
     properties = Map.new(fields, fn {key, value} -> {to_string(key), process_type(value)} end)
@@ -70,7 +71,8 @@ defmodule OpenAI.Responses.Schema do
     schema = %{
       "type" => "object",
       "properties" => properties,
-      "required" => Enum.map(Map.keys(fields), &to_string/1)
+      "required" => Enum.map(Map.keys(fields), &to_string/1),
+      "additionalProperties" => additional_properties
     }
     
     if name do
