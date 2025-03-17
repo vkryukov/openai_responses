@@ -6,7 +6,7 @@ This document explains how to use the structured outputs feature with the OpenAI
 
 Structured Outputs is a feature that ensures the model will always generate responses that adhere to your supplied JSON Schema, so you don't need to worry about the model omitting a required key, or hallucinating an invalid enum value.
 
-The OpenAI Responses Elixir library provides a simple, idiomatic way to define schemas and parse responses with structured outputs.
+The OpenAI Responses Elixir library provides a simple, idiomatic way to define schemas and parse responses with structured outputs. This library supports the latest OpenAI API format for structured outputs.
 
 ## Basic Usage
 
@@ -161,3 +161,14 @@ Structured Outputs is available in OpenAI's latest large language models, starti
 - `gpt-4o-2024-08-06` and later
 
 Older models like `gpt-4-turbo` and earlier may use JSON mode instead.
+
+## API Implementation Details
+
+This library implements the latest OpenAI API format for structured outputs, which uses the `text` parameter with a format specification instead of the older `response_format` parameter. The implementation handles both the direct API response format and streaming responses.
+
+Key features of the implementation:
+
+- Automatic handling of the new API format with the `text` parameter
+- Support for schema validation with `additionalProperties: false` by default
+- Proper extraction of structured data from both regular and streaming responses
+- Comprehensive error handling for JSON parsing and schema validation
