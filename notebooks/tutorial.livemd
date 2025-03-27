@@ -2,7 +2,8 @@
 
 ```elixir
 Mix.install([
-  {:openai_responses, "~> 0.2.0"},
+  # {:openai_responses, "~> 0.3.0"},
+  {:openai_responses, path: "~/src/openai_responses"},
   {:kino, "~> 0.11.0"}
 ])
 ```
@@ -177,8 +178,10 @@ calendar_event_schema = Schema.object(%{
 )
 
 # Access the parsed data
-IO.inspect(event, label: "Calendar Event")
+event.parsed
+```
 
+```elixir
 # Define a more complex schema with nested objects
 math_reasoning_schema = Schema.object(%{
   steps: {:array, Schema.object(%{
@@ -195,7 +198,13 @@ math_reasoning_schema = Schema.object(%{
   math_reasoning_schema
 )
 
-IO.inspect(solution, label: "Math Solution")
+solution.parsed
+```
+
+The returned map also defines `:raw_response` and `:token_usage` if you need to get additional metadata from the LLM provider.
+
+```elixir
+solution.raw_response
 ```
 
 <!-- livebook:{"branch_parent_index":0} -->
@@ -234,3 +243,5 @@ Kino.Frame.append(frame, Kino.Markdown.new("\n\n*Generation complete* ✨"))
 
 :done
 ```
+
+You can also combine structured outputs with real-time streaming:
