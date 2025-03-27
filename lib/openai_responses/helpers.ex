@@ -88,6 +88,11 @@ defmodule OpenAI.Responses.Helpers do
       input: Decimal.new("3.00"),
       input_cached: nil,
       output: Decimal.new("12.00")
+    },
+    "chatgpt-4o-latest" => %{
+      input: Decimal.new("5.00"),
+      input_cached: nil,
+      output: Decimal.new("15.00")
     }
   }
 
