@@ -17,91 +17,96 @@ defmodule OpenAI.Responses.Helpers do
 
   @million Decimal.new(1_000_000)
 
-  # Costs are per 1 million tokens
+  # Costs are per 1 million tokens, keyed by the full model name
   @model_pricing %{
-    "gpt-4.5-preview" => %{
+    "gpt-4.5-preview-2025-02-27" => %{
       input: Decimal.new("75.00"),
       input_cached: Decimal.new("37.50"),
       output: Decimal.new("150.00")
     },
-    "gpt-4o" => %{
+    "gpt-4o-2024-08-06" => %{
       input: Decimal.new("2.50"),
       input_cached: Decimal.new("1.25"),
       output: Decimal.new("10.00")
     },
-    "gpt-4o-audio-preview" => %{
+    "gpt-4o-audio-preview-2024-12-17" => %{
       input: Decimal.new("2.50"),
       input_cached: nil,
       output: Decimal.new("10.00")
     },
-    "gpt-4o-realtime-preview" => %{
+    "gpt-4o-realtime-preview-2024-12-17" => %{
       input: Decimal.new("5.00"),
       input_cached: Decimal.new("2.50"),
       output: Decimal.new("20.00")
     },
-    "gpt-4o-mini" => %{
+    "gpt-4o-mini-2024-07-18" => %{
       input: Decimal.new("0.15"),
       input_cached: Decimal.new("0.075"),
       output: Decimal.new("0.60")
     },
-    "gpt-4o-mini-audio-preview" => %{
+    "gpt-4o-mini-audio-preview-2024-12-17" => %{
       input: Decimal.new("0.15"),
       input_cached: nil,
       output: Decimal.new("0.60")
     },
-    "gpt-4o-mini-realtime-preview" => %{
+    "gpt-4o-mini-realtime-preview-2024-12-17" => %{
       input: Decimal.new("0.60"),
       input_cached: Decimal.new("0.30"),
       output: Decimal.new("2.40")
     },
-    "o1" => %{
+    "o1-2024-12-17" => %{
       input: Decimal.new("15.00"),
       input_cached: Decimal.new("7.50"),
       output: Decimal.new("60.00")
     },
-    "o1-pro" => %{input: Decimal.new("150.00"), input_cached: nil, output: Decimal.new("600.00")},
-    "o3-mini" => %{
+    "o1-pro-2025-03-19" => %{
+      input: Decimal.new("150.00"),
+      input_cached: nil,
+      output: Decimal.new("600.00")
+    },
+    "o3-mini-2025-01-31" => %{
       input: Decimal.new("1.10"),
       input_cached: Decimal.new("0.55"),
       output: Decimal.new("4.40")
     },
-    "o1-mini" => %{
+    "o1-mini-2024-09-12" => %{
       input: Decimal.new("1.10"),
       input_cached: Decimal.new("0.55"),
       output: Decimal.new("4.40")
     },
-    "gpt-4o-mini-search-preview" => %{
+    "gpt-4o-mini-search-preview-2025-03-11" => %{
       input: Decimal.new("0.15"),
       input_cached: nil,
       output: Decimal.new("0.60")
     },
-    "gpt-4o-search-preview" => %{
+    "gpt-4o-search-preview-2025-03-11" => %{
       input: Decimal.new("2.50"),
       input_cached: nil,
       output: Decimal.new("10.00")
     },
-    "computer-use-preview" => %{
+    "computer-use-preview-2025-03-11" => %{
       input: Decimal.new("3.00"),
       input_cached: nil,
       output: Decimal.new("12.00")
     }
   }
 
+  # Maps short alias name to full model name
   @model_aliases %{
-    "gpt-4.5-preview-2025-02-27" => "gpt-4.5-preview",
-    "gpt-4o-2024-08-06" => "gpt-4o",
-    "gpt-4o-audio-preview-2024-12-17" => "gpt-4o-audio-preview",
-    "gpt-4o-realtime-preview-2024-12-17" => "gpt-4o-realtime-preview",
-    "gpt-4o-mini-2024-07-18" => "gpt-4o-mini",
-    "gpt-4o-mini-audio-preview-2024-12-17" => "gpt-4o-mini-audio-preview",
-    "gpt-4o-mini-realtime-preview-2024-12-17" => "gpt-4o-mini-realtime-preview",
-    "o1-2024-12-17" => "o1",
-    "o1-pro-2025-03-19" => "o1-pro",
-    "o3-mini-2025-01-31" => "o3-mini",
-    "o1-mini-2024-09-12" => "o1-mini",
-    "gpt-4o-mini-search-preview-2025-03-11" => "gpt-4o-mini-search-preview",
-    "gpt-4o-search-preview-2025-03-11" => "gpt-4o-search-preview",
-    "computer-use-preview-2025-03-11" => "computer-use-preview"
+    "gpt-4.5-preview" => "gpt-4.5-preview-2025-02-27",
+    "gpt-4o" => "gpt-4o-2024-08-06",
+    "gpt-4o-audio-preview" => "gpt-4o-audio-preview-2024-12-17",
+    "gpt-4o-realtime-preview" => "gpt-4o-realtime-preview-2024-12-17",
+    "gpt-4o-mini" => "gpt-4o-mini-2024-07-18",
+    "gpt-4o-mini-audio-preview" => "gpt-4o-mini-audio-preview-2024-12-17",
+    "gpt-4o-mini-realtime-preview" => "gpt-4o-mini-realtime-preview-2024-12-17",
+    "o1" => "o1-2024-12-17",
+    "o1-pro" => "o1-pro-2025-03-19",
+    "o3-mini" => "o3-mini-2025-01-31",
+    "o1-mini" => "o1-mini-2024-09-12",
+    "gpt-4o-mini-search-preview" => "gpt-4o-mini-search-preview-2025-03-11",
+    "gpt-4o-search-preview" => "gpt-4o-search-preview-2025-03-11",
+    "computer-use-preview" => "computer-use-preview-2025-03-11"
   }
 
   @doc """
@@ -272,10 +277,11 @@ defmodule OpenAI.Responses.Helpers do
   Calculates the estimated cost of an OpenAI API call based on token usage.
 
   Uses the provided model name and token usage map to calculate the cost.
-  Handles model aliases (e.g., `gpt-4o-2024-08-06` maps to `gpt-4o`).
+  Handles model aliases (e.g., `gpt-4o` maps to `gpt-4o-2024-08-06`).
   Applies discounts for cached input tokens where applicable.
 
-  Costs are based on the pricing defined in `@model_pricing` (per 1 million tokens).
+  Costs are based on the pricing defined in `@model_pricing` (per 1 million tokens),
+  which uses the full, dated model names as keys.
 
   ## Parameters
 
@@ -292,15 +298,15 @@ defmodule OpenAI.Responses.Helpers do
   ## Examples
 
       iex> usage = %{ "input_tokens" => 1000, "input_tokens_details" => %{"cached_tokens" => 500}, "output_tokens" => 2000 }
-      iex> OpenAI.Responses.Helpers.calculate_cost("gpt-4o", usage)
-      {:ok, #Decimal<0.011875>}
+      iex> OpenAI.Responses.Helpers.calculate_cost("gpt-4o", usage) # Using alias
+      {:ok, #Decimal<0.021875>}
 
       iex> usage = %{ "input_tokens" => 1000, "input_tokens_details" => %{"cached_tokens" => 0}, "output_tokens" => 2000 }
-      iex> OpenAI.Responses.Helpers.calculate_cost("gpt-4o-2024-08-06", usage) # Using long name
+      iex> OpenAI.Responses.Helpers.calculate_cost("gpt-4o-2024-08-06", usage) # Using full name
       {:ok, #Decimal<0.0225>}
 
       iex> usage = %{ "input_tokens" => 1000, "input_tokens_details" => %{"cached_tokens" => 500}, "output_tokens" => 2000 }
-      iex> OpenAI.Responses.Helpers.calculate_cost("gpt-4o-audio-preview", usage) # Model without cached input discount
+      iex> OpenAI.Responses.Helpers.calculate_cost("gpt-4o-audio-preview-2024-12-17", usage) # Model without cached input discount
       {:ok, #Decimal<0.0225>}
 
       iex> usage = %{ "input_tokens" => 100, "input_tokens_details" => %{"cached_tokens" => 0}, "output_tokens" => 50 }
@@ -311,10 +317,11 @@ defmodule OpenAI.Responses.Helpers do
           {:ok, Decimal.t()} | :unknown | {:error, :invalid_usage_format}
   def calculate_cost(model_name, token_usage)
       when is_binary(model_name) and is_map(token_usage) do
-    normalized_model = Map.get(@model_aliases, model_name, model_name)
+    # Resolve alias to full name if necessary, otherwise use the provided name
+    full_model_name = Map.get(@model_aliases, model_name, model_name)
 
     with %{input: input_rate, input_cached: cached_rate_or_nil, output: output_rate} <-
-           Map.get(@model_pricing, normalized_model),
+           Map.get(@model_pricing, full_model_name),
          %{
            "input_tokens" => input_tokens,
            "input_tokens_details" => %{"cached_tokens" => cached_input_tokens},

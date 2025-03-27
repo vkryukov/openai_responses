@@ -15,6 +15,7 @@ defmodule OpenAI.Responses.HelpersTest do
       # = 0.000625 + 0.00125 + 0.02 = 0.021875
       expected_cost = Decimal.new("0.021875")
 
+      # Test using the alias
       assert {:ok, cost} = Helpers.calculate_cost("gpt-4o", usage)
       assert Decimal.equal?(cost, expected_cost)
     end
@@ -30,7 +31,8 @@ defmodule OpenAI.Responses.HelpersTest do
       # = 0.0025 + 0.02 = 0.0225
       expected_cost = Decimal.new("0.0225")
 
-      assert {:ok, cost} = Helpers.calculate_cost("gpt-4o", usage)
+      # Test using the full name
+      assert {:ok, cost} = Helpers.calculate_cost("gpt-4o-2024-08-06", usage)
       assert Decimal.equal?(cost, expected_cost)
     end
 
@@ -45,8 +47,13 @@ defmodule OpenAI.Responses.HelpersTest do
       # = 0.0000075 + 0.00006 + 0.0006 = 0.0006675
       expected_cost = Decimal.new("0.0006675")
 
-      assert {:ok, cost} = Helpers.calculate_cost("gpt-4o-mini-2024-07-18", usage)
+      # Test using the alias
+      assert {:ok, cost} = Helpers.calculate_cost("gpt-4o-mini", usage)
       assert Decimal.equal?(cost, expected_cost)
+
+      # Test using the full name
+      assert {:ok, cost_full} = Helpers.calculate_cost("gpt-4o-mini-2024-07-18", usage)
+      assert Decimal.equal?(cost_full, expected_cost)
     end
 
     test "calculates cost for model without specific cached discount (gpt-4o-audio-preview)" do
@@ -60,8 +67,13 @@ defmodule OpenAI.Responses.HelpersTest do
       # = 0.00125 + 0.00125 + 0.02 = 0.0225
       expected_cost = Decimal.new("0.0225")
 
+      # Test using the alias
       assert {:ok, cost} = Helpers.calculate_cost("gpt-4o-audio-preview", usage)
       assert Decimal.equal?(cost, expected_cost)
+
+      # Test using the full name
+      assert {:ok, cost_full} = Helpers.calculate_cost("gpt-4o-audio-preview-2024-12-17", usage)
+      assert Decimal.equal?(cost_full, expected_cost)
     end
 
     test "returns :unknown for unlisted model" do
