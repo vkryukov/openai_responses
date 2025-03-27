@@ -322,7 +322,10 @@ defmodule OpenAI.Responses do
 
   ## Returns
 
-    * `{:ok, parsed_data}` - On success, returns the parsed data
+    * `{:ok, result_map}` - On success, returns a map containing:
+      * `:parsed` - The parsed data according to the schema.
+      * `:raw_response` - The complete, raw response map received from the API.
+      * `:token_usage` - The token usage map from the API response (e.g., `%{ "input_tokens" => 10, "output_tokens" => 50 }`), or `nil` if not present.
     * `{:error, error}` - On failure
 
   ## Examples
@@ -335,19 +338,26 @@ defmodule OpenAI.Responses do
       })
 
       # Create a response with structured output
-      {:ok, event} = OpenAI.Responses.parse(
+      {:ok, result} = OpenAI.Responses.parse( # Changed 'event' to 'result' for clarity
         "gpt-4o",
         "Alice and Bob are going to a science fair on Friday.",
         calendar_event_schema,
         schema_name: "event"
       )
 
-      # Access the parsed data
-      IO.puts("Event: #{event["name"]} on #{event["date"]}")
-      IO.puts("Participants: #{Enum.join(event["participants"], ", ")}")
+      # Access the parsed data and metadata
+      IO.puts("Event: #{result.parsed["name"]} on #{result.parsed["date"]}")
+      IO.puts("Participants: #{Enum.join(result.parsed["participants"], ", ")}")
+      IO.inspect(result.token_usage, label: "Token Usage")
   """
   @spec parse(String.t(), String.t() | map() | list(), map(), keyword()) ::
-          {:ok, map()} | {:error, any()}
+          {:ok,
+           %{
+             parsed: map() | list(),
+             raw_response: map(),
+             token_usage: map() | nil
+           }}
+          | {:error, any()}
   def parse(model, input, schema, opts \\ []) do
     schema_name = Keyword.get(opts, :schema_name, "data")
     strict = Keyword.get(opts, :strict, true)
@@ -366,16 +376,28 @@ defmodule OpenAI.Responses do
     system_message = "Extract the #{schema_name} information."
 
     # Add the text format and system message to the options
-    opts = opts
-           |> Keyword.put(:text, text_format)
-           |> Keyword.put(:instructions, system_message)
+    opts =
+      opts
+      |> Keyword.put(:text, text_format)
+      |> Keyword.put(:instructions, system_message)
 
     case create(model, input, opts) do
       {:ok, response} ->
-        # Extract the parsed data from the response
+        # Extract the parsed data and metadata from the response
+        # Or appropriate key for usage data
+        token_usage = Map.get(response, "usage")
+
         case extract_parsed_data(response) do
-          {:ok, data} -> {:ok, data}
-          {:error, error} -> {:error, error}
+          {:ok, parsed_data} ->
+            {:ok,
+             %{
+               parsed: parsed_data,
+               raw_response: response,
+               token_usage: token_usage
+             }}
+
+          {:error, error} ->
+            {:error, error}
         end
 
       error ->
@@ -387,7 +409,8 @@ defmodule OpenAI.Responses do
   Creates a streaming response with structured output.
 
   This function is similar to `stream/3` but automatically parses each chunk
-  according to the provided schema.
+  according to the provided schema and yields the parsed data. It also supports
+  an optional `:on_complete` callback to receive final stream metadata.
 
   ## Parameters
 
@@ -396,11 +419,12 @@ defmodule OpenAI.Responses do
     * `schema` - The schema definition for structured output
     * `opts` - Optional parameters for the request
       * `:schema_name` - Optional name for the schema (default: "data")
+      * `:on_complete` - Optional 1-arity function called once with final stream metadata (e.g., `%{token_usage: ..., finish_reason: ..., raw_final_event: ...}`) after the stream finishes.
       * All other options supported by `stream/3`
 
   ## Returns
 
-    * A stream that yields parsed data chunks
+    * A stream that yields parsed data chunks.
 
   ## Examples
 
@@ -413,24 +437,34 @@ defmodule OpenAI.Responses do
         final_answer: :string
       })
 
-      # Stream a response with structured output
+      # Atomically store the final metadata
+      final_meta_ref = :atomics.new(1, [])
+
+      # Stream a response with structured output and capture final metadata
       stream = OpenAI.Responses.parse_stream(
         "gpt-4o",
         "Solve 8x + 7 = -23",
         math_reasoning_schema,
-        schema_name: "math_reasoning"
+        schema_name: "math_reasoning",
+        on_complete: fn meta -> :atomics.put(final_meta_ref, 1, meta) end
       )
 
-      # Process the stream
-      Enum.each(stream, fn chunk ->
-        IO.inspect(chunk)
-      end)
+      # Process the stream incrementally
+      stream
+      |> Stream.each(&IO.inspect(&1, label: "Parsed Chunk"))
+      |> Stream.run()
+
+      # Access final metadata after stream completion
+      final_metadata = :atomics.get(final_meta_ref, 1)
+      IO.inspect(final_metadata.token_usage, label: "Final Token Usage")
+
   """
   @spec parse_stream(String.t(), String.t() | map() | list(), map(), keyword()) ::
           Enumerable.t()
   def parse_stream(model, input, schema, opts \\ []) do
     schema_name = Keyword.get(opts, :schema_name, "data")
     strict = Keyword.get(opts, :strict, true)
+    {on_complete_cb, opts} = Keyword.pop(opts, :on_complete)
 
     # Prepare the text format with the schema according to the new API format
     text_format = %{
@@ -446,20 +480,53 @@ defmodule OpenAI.Responses do
     system_message = "Extract the #{schema_name} information."
 
     # Add the text format and system message to the options
-    opts = opts
-           |> Keyword.put(:text, text_format)
-           |> Keyword.put(:instructions, system_message)
+    opts =
+      opts
+      |> Keyword.put(:text, text_format)
+      |> Keyword.put(:instructions, system_message)
 
-    # Get the stream
-    stream = stream(model, input, opts)
+    # Get the raw stream
+    raw_stream = stream(model, input, opts)
 
-    # Transform the stream to extract parsed data from each chunk
-    Stream.map(stream, fn chunk ->
-      case extract_parsed_data_from_chunk(chunk) do
-        {:ok, data} -> data
-        # Return the original chunk if parsing fails
-        {:error, _} -> chunk
+    # Use Stream.transform to process chunks, yield parsed data, and handle completion
+    Stream.transform(raw_stream, nil, fn chunk, _acc ->
+      # Try to parse data from the chunk
+      parsed_data =
+        case extract_parsed_data_from_chunk(chunk) do
+          # Emit the parsed data as a list element
+          {:ok, data} -> [data]
+          # Ignore chunks that don't contain parsable data
+          {:error, _} -> []
+        end
+
+      # Check if this is the final chunk.
+      # This logic assumes the final event might contain "usage" or "finish_reason".
+      # Adjust based on the specific API's stream termination signal if needed.
+      is_final_chunk = Map.has_key?(chunk, "usage") || Map.has_key?(chunk, "finish_reason")
+
+      if is_final_chunk and is_function(on_complete_cb, 1) do
+        # Extract metadata (adjust keys as needed based on actual API response)
+        metadata = %{
+          token_usage: Map.get(chunk, "usage"),
+          # Example key
+          finish_reason: Map.get(chunk, "finish_reason"),
+          raw_final_event: chunk
+        }
+
+        # Call the callback in a try/rescue block to prevent callback errors from crashing the stream
+        try do
+          on_complete_cb.(metadata)
+        rescue
+          e ->
+            IO.warn(
+              "Error executing :on_complete callback in OpenAI.Responses.parse_stream: #{inspect(e)}"
+            )
+        end
       end
+
+      # Return the list of parsed data (usually 0 or 1 element) and continue the stream
+      # Using nil accumulator as state is not needed here
+      {parsed_data, nil}
     end)
   end
 
@@ -496,7 +563,9 @@ defmodule OpenAI.Responses do
                   rescue
                     _ -> nil
                   end
-                _ -> nil
+
+                _ ->
+                  nil
               end)
 
             _ ->
@@ -521,7 +590,8 @@ defmodule OpenAI.Responses do
   defp extract_parsed_data_from_chunk(chunk) do
     case chunk do
       # Handle output_text delta in the new API format
-      %{"delta" => %{"output_text" => output_text}} when is_binary(output_text) and output_text != "" ->
+      %{"delta" => %{"output_text" => output_text}}
+      when is_binary(output_text) and output_text != "" ->
         try do
           {:ok, Jason.decode!(output_text)}
         rescue
@@ -546,7 +616,9 @@ defmodule OpenAI.Responses do
             rescue
               _ -> nil
             end
-          _ -> nil
+
+          _ ->
+            nil
         end)
 
       # Handle text chunks that might contain JSON
