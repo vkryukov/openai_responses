@@ -83,7 +83,7 @@ defmodule OpenAI.Responses.HelpersTest do
         "output_tokens" => 50
       }
 
-      assert Helpers.calculate_cost("some-random-model-x", usage) == :unknown
+      assert Helpers.calculate_cost("some-random-model-x", usage) == {:error, :unknown_model_name}
     end
 
     test "returns error for invalid usage format (missing keys)" do
@@ -133,7 +133,7 @@ defmodule OpenAI.Responses.HelpersTest do
         }
       }
 
-      assert Helpers.calculate_cost(raw_response) == :unknown
+      assert Helpers.calculate_cost(raw_response) == {:error, :unknown_model_name}
     end
 
     test "returns error for invalid raw response format (missing model)" do

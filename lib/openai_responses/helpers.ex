@@ -297,7 +297,7 @@ defmodule OpenAI.Responses.Helpers do
   ## Returns
 
     * `{:ok, Decimal.t()}` - The calculated cost as a Decimal.
-    * `:unknown` - If the model name is not found in the pricing table.
+    * `{:error, :unknown_model_name}` - If the model name is not found in the pricing table.
     * `{:error, :invalid_usage_format}` - If the `token_usage` map has an unexpected format.
 
   ## Examples
@@ -316,10 +316,10 @@ defmodule OpenAI.Responses.Helpers do
 
       iex> usage = %{ "input_tokens" => 100, "input_tokens_details" => %{"cached_tokens" => 0}, "output_tokens" => 50 }
       iex> OpenAI.Responses.Helpers.calculate_cost("unknown-model", usage)
-      :unknown
+      {:error, :unknown_model_name}
   """
   @spec calculate_cost(String.t(), map()) ::
-          {:ok, Decimal.t()} | :unknown | {:error, :invalid_usage_format}
+          {:ok, Decimal.t()} | {:error, :unknown_model_name | :invalid_usage_format}
   def calculate_cost(model_name, token_usage)
       when is_binary(model_name) and is_map(token_usage) do
     # Resolve alias to full name if necessary, otherwise use the provided name
@@ -350,7 +350,7 @@ defmodule OpenAI.Responses.Helpers do
       {:ok, total_cost}
     else
       # Model not found in pricing
-      nil -> :unknown
+      nil -> {:error, :unknown_model_name}
       # Token usage map format is incorrect
       _ -> {:error, :invalid_usage_format}
     end
@@ -370,7 +370,7 @@ defmodule OpenAI.Responses.Helpers do
   ## Returns
 
     * `{:ok, Decimal.t()}` - The calculated cost as a Decimal.
-    * `:unknown` - If the model name is not found in the pricing table.
+    * `{:error, :unknown_model_name}` - If the model name is not found in the pricing table.
     * `{:error, :invalid_response_format}` - If the `raw_response` map doesn't contain "model" or "usage".
     * `{:error, :invalid_usage_format}` - If the nested "usage" map has an unexpected format.
 
@@ -384,14 +384,17 @@ defmodule OpenAI.Responses.Helpers do
       iex> OpenAI.Responses.Helpers.calculate_cost(raw_response)
       {:ok, #Decimal<0.0006675>}
 
+      iex> raw_response = %{"model" => "unknown-model", "usage" => %{ "input_tokens" => 100, "input_tokens_details" => %{"cached_tokens" => 0}, "output_tokens" => 50 }}
+      iex> OpenAI.Responses.Helpers.calculate_cost(raw_response)
+      {:error, :unknown_model_name}
+
       iex> raw_response = %{"model" => "gpt-4o", "usage" => %{"input_tokens" => 10}} # Incomplete usage
       iex> OpenAI.Responses.Helpers.calculate_cost(raw_response)
       {:error, :invalid_usage_format}
   """
   @spec calculate_cost(map()) ::
           {:ok, Decimal.t()}
-          | :unknown
-          | {:error, :invalid_response_format | :invalid_usage_format}
+          | {:error, :unknown_model_name | :invalid_response_format | :invalid_usage_format}
   def calculate_cost(raw_response) when is_map(raw_response) do
     with %{"model" => model, "usage" => usage} <- raw_response do
       calculate_cost(model, usage)
