@@ -41,6 +41,10 @@ Helpers.output_text(response)
 Helpers.token_usage(response)
 ```
 
+```elixir
+Helpers.calculate_cost(response)
+```
+
 You can also supplied additional parameters to the API call:
 
 ```elixir
