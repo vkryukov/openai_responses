@@ -159,6 +159,51 @@ IO.puts(Helpers.output_text(response_with_search))
 
 <!-- livebook:{"branch_parent_index":0} -->
 
+## Stored conversation state
+
+The new Responses API makes it much easier to continue the conversation, without repeating the whole conversation story. Note that responses **are** stored by default
+
+```elixir
+{:ok, response} =
+  Responses.create(
+    "gpt-4o",
+    """
+    Give me the names of the first 6 U.S. presidents. Include their names, dates of birth and death,
+    and information on their terms. Provide some interesting facts about each
+    """,
+    instructions:
+      "Talk like a pirate in all your responses, including all the interesting facts."
+  )
+
+Helpers.output_text(response) |> IO.puts()
+```
+
+Now we can get information about the next 6 presidents, without explicitly repeating our prompt, by refering to the `response["id"]` from the previous response:
+
+```elixir
+{:ok, next_response} =
+  Responses.create("gpt-4o", "next 6", previous_response_id: response["id"])
+
+Helpers.output_text(next_response) |> IO.puts()
+```
+
+```elixir
+{:ok, next_response2} =
+  Responses.create("gpt-4o", "next 6", previous_response_id: next_response["id"])
+{:ok, next_response3} =
+  Responses.create("gpt-4o", "next 6", previous_response_id: next_response2["id"])
+```
+
+Let's compare the token usage of these two requests. As you can see, even though the *explicit* prompt we supplied was very short, OpenAI still takes into account all the relevant input tokens from the prompt. However, for system prompts over 1024 bytes, OpenAI enables caching automatically, which can be seen below:
+
+```elixir
+IO.puts inspect(Helpers.token_usage(response), pretty: true)
+IO.puts inspect(Helpers.token_usage(next_response), pretty: true)
+IO.puts inspect(Helpers.token_usage(next_response3), pretty: true)
+```
+
+<!-- livebook:{"branch_parent_index":0} -->
+
 ## Structured outputs
 
 Structured output ensures the model always generates responses that adhere to your supplied JSON Schema.
