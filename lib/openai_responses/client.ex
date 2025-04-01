@@ -31,7 +31,7 @@ defmodule OpenAI.Responses.Client do
       base_url: api_base,
       auth: {:bearer, api_key},
       json: true,
-      recv_timeout: 30_000
+      receive_timeout: 30_000
     ]
 
     # User-provided req_options will override the base options
