@@ -28,7 +28,7 @@ graph LR
 ## Design Patterns
 
 - **Facade:** The main `OpenAI.Responses` module likely acts as a facade, providing a simple entry point to the library's functionality and coordinating calls to other internal modules (`Client`, `Stream`, `Helpers`).
-- **Client Object:** The `OpenAI.Responses.Client` allows for stateful configuration (like API key, base URL) and potentially request customization. This resembles aspects of a configurable client or strategy pattern.
+- **Client Object:** The `OpenAI.Responses.Client` allows for stateful configuration (like API key, base URL, Req options) via `Client.new/1`. It now sets a default `:recv_timeout` of 30 seconds, overriding Req's default 5 seconds. Users can still provide custom `:req_options` to override this or other settings. This resembles aspects of a configurable client or strategy pattern.
 - **Helper Module:** Consolidating utility functions into `Helpers` and `ImageHelpers` follows the Helper/Utility Module pattern.
 
 ## Component Relationships

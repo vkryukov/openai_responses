@@ -39,12 +39,14 @@
 - Verify comprehensive error handling for API errors, network issues, and invalid input.
 - Assess completeness of test coverage (`test/` directory exists).
 - Potentially add support for newer OpenAI API features if not already covered.
-- Explore advanced configuration options (e.g., custom HTTP timeouts via Req).
+- Explore advanced configuration options (e.g., custom HTTP timeouts via Req). (Update: Default timeout increased, custom still possible via `:req_options`).
 
 ## Known Issues
 
 *(None identified from initial README/file analysis. Requires testing.)*
+- Default `Req` timeout of 5s was potentially too short for long OpenAI calls. (Resolved: Default `:recv_timeout` increased to 30s in `Client.new/1`).
 
 ## Decision Log
 
 - **(Initial) 2025-03-30:** Created and populated the Cline's Memory Bank structure. Decided to base initial population on README, mix.exs, and file structure.
+- **2025-03-31:** Increased the default `:recv_timeout` in `Client.new/1` from Req's default (5s) to 30s to mitigate common timeout issues. Confirmed users can still override via `:req_options`.

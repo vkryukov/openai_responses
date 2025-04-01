@@ -4,18 +4,18 @@
 
 ## Current Focus
 
-- Initializing the Cline's Memory Bank for the `openai_responses` Elixir library project.
-- Understanding the project structure, purpose, and existing functionality based on the README and file listing.
+- Addressing user query about default timeouts and how to configure them.
 
 ## Recent Changes
 
-- Created the core Memory Bank files (`projectbrief.md`, `productContext.md`, `activeContext.md`, `systemPatterns.md`, `techContext.md`, `progress.md`).
-- Populated `projectbrief.md` and `productContext.md` with initial information derived from `README.md`.
+- Investigated `Req` default timeouts and how `openai_responses` uses `Req`.
+- Modified `lib/openai_responses/client.ex` to set a default `:recv_timeout` of 30,000ms (30 seconds) in `Client.new/1`. This addresses the issue of timeouts with default settings for longer API calls.
+- Confirmed that users can still override this default using the `:req_options` keyword list when calling library functions or `Client.new/1`.
 
 ## Next Steps
 
-- Populate `systemPatterns.md`, `techContext.md`, and `progress.md` based on the current understanding of the project.
-- Review the populated Memory Bank for accuracy and completeness based on available information.
+- Update `progress.md` and `systemPatterns.md` to reflect the new default timeout.
+- Finalize the task completion.
 
 ## Active Decisions & Considerations
 

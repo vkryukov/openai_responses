@@ -26,13 +26,16 @@ defmodule OpenAI.Responses.Client do
     api_base = Config.get(config, :api_base, @api_base)
     req_options = Config.get(config, :req_options, [])
 
-    Req.new(
-      [
-        base_url: api_base,
-        auth: {:bearer, api_key},
-        json: true
-      ] ++ req_options
-    )
+    # Base options including a default 30-second receive timeout
+    base_req_options = [
+      base_url: api_base,
+      auth: {:bearer, api_key},
+      json: true,
+      recv_timeout: 30_000
+    ]
+
+    # User-provided req_options will override the base options
+    Req.new(base_req_options ++ req_options)
   end
 
   @doc """
