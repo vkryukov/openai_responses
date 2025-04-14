@@ -93,6 +93,21 @@ defmodule OpenAI.Responses.Helpers do
       input: Decimal.new("5.00"),
       input_cached: nil,
       output: Decimal.new("15.00")
+    },
+    "gpt-4.1-2025-04-14" => %{
+      input: Decimal.new("2.00"),
+      input_cached: Decimal.new("0.50"),
+      output: Decimal.new("8.00")
+    },
+    "gpt-4.1-mini-2025-04-14" => %{
+      input: Decimal.new("0.40"),
+      input_cached: Decimal.new("0.10"),
+      output: Decimal.new("1.60")
+    },
+    "gpt-4.1-nano-2025-04-14" => %{
+      input: Decimal.new("0.10"),
+      input_cached: Decimal.new("0.0025"),
+      output: Decimal.new("0.40")
     }
   }
 
@@ -111,7 +126,10 @@ defmodule OpenAI.Responses.Helpers do
     "o1-mini" => "o1-mini-2024-09-12",
     "gpt-4o-mini-search-preview" => "gpt-4o-mini-search-preview-2025-03-11",
     "gpt-4o-search-preview" => "gpt-4o-search-preview-2025-03-11",
-    "computer-use-preview" => "computer-use-preview-2025-03-11"
+    "computer-use-preview" => "computer-use-preview-2025-03-11",
+    "gpt-4.1" => "gpt-4.1-2025-04-14",
+    "gpt-4.1-mini" => "gpt-4.1-mini-2025-04-14",
+    "gpt-4.1-nano" => "gpt-4.1-nano-2025-04-14"
   }
 
   @doc """
