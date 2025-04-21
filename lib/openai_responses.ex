@@ -25,7 +25,6 @@ defmodule OpenAI.Responses do
   """
 
   alias OpenAI.Responses.Client
-  alias OpenAI.Responses.Types
 
   @doc ~S"""
   Creates a new response with the specified model and input.
@@ -55,7 +54,7 @@ defmodule OpenAI.Responses do
     payload = prepare_create_payload(model, input, opts)
 
     case Client.request(client, :post, "/responses", payload) do
-      {:ok, response} -> {:ok, Types.response(response)}
+      {:ok, response} -> {:ok, response}
       error -> error
     end
   end
@@ -136,7 +135,7 @@ defmodule OpenAI.Responses do
     query = if opts[:include], do: %{include: opts[:include]}, else: %{}
 
     case Client.request(client, :get, "/responses/#{response_id}", nil, query) do
-      {:ok, response} -> {:ok, Types.response(response)}
+      {:ok, response} -> {:ok, response}
       error -> error
     end
   end
