@@ -162,4 +162,115 @@ defmodule OpenAI.Responses.HelpersTest do
       assert Helpers.calculate_cost(raw_response) == {:error, :invalid_usage_format}
     end
   end
+
+  # Add tests moved from openai_responses_test.exs
+  describe "output_text/1" do
+    test "extracts text from simple response" do
+      response = %{
+        "output" => [
+          %{
+            "type" => "message",
+            "content" => [
+              %{"type" => "output_text", "text" => "Hello world"}
+            ]
+          }
+        ]
+      }
+
+      assert Helpers.output_text(response) == "Hello world"
+    end
+
+    test "handles multiple messages" do
+      response = %{
+        "output" => [
+          %{
+            "type" => "message",
+            "content" => [
+              %{"type" => "output_text", "text" => "First message"}
+            ]
+          },
+          %{
+            "type" => "message",
+            "content" => [
+              %{"type" => "output_text", "text" => "Second message"}
+            ]
+          }
+        ]
+      }
+
+      assert Helpers.output_text(response) == "First message\nSecond message"
+    end
+
+    test "returns empty string for no text" do
+      response = %{"output" => [%{"type" => "message", "content" => []}]}
+      assert Helpers.output_text(response) == ""
+    end
+
+    test "returns empty string for empty response" do
+      assert Helpers.output_text(%{}) == ""
+    end
+  end
+
+  describe "token_usage/1" do
+    test "extracts usage information" do
+      response = %{
+        "usage" => %{
+          "input_tokens" => 10,
+          "output_tokens" => 20,
+          "total_tokens" => 30
+        }
+      }
+
+      assert Helpers.token_usage(response) == %{
+               "input_tokens" => 10,
+               "output_tokens" => 20,
+               "total_tokens" => 30
+             }
+    end
+
+    test "returns nil if usage key is missing" do
+      assert Helpers.token_usage(%{"output" => []}) == nil
+    end
+  end
+
+  describe "has_refusal?/1" do
+    test "detects refusal in content" do
+      response_with_refusal = %{
+        "output" => [
+          %{
+            "type" => "message",
+            "content" => [
+              %{"type" => "refusal", "refusal" => "I cannot help with that request"}
+            ]
+          }
+        ]
+      }
+
+      assert Helpers.has_refusal?(response_with_refusal) == true
+    end
+
+    test "returns false when no refusal is present" do
+      response_without_refusal = %{
+        "output" => [
+          %{
+            "type" => "message",
+            "content" => [
+              %{"type" => "output_text", "text" => "Here's your answer"}
+            ]
+          }
+        ]
+      }
+
+      assert Helpers.has_refusal?(response_without_refusal) == false
+    end
+
+    test "returns false for empty or non-list content" do
+      response_empty_content = %{"output" => [%{"type" => "message", "content" => []}]}
+      response_no_content_key = %{"output" => [%{"type" => "message"}]}
+      response_no_output = %{}
+      assert Helpers.has_refusal?(response_empty_content) == false
+      assert Helpers.has_refusal?(response_no_content_key) == false
+      assert Helpers.has_refusal?(response_no_output) == false
+    end
+  end
 end
