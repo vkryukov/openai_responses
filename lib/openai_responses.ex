@@ -9,7 +9,7 @@ defmodule OpenAI.Responses do
 
       # Create a simple text response
       {:ok, response} = OpenAI.Responses.create(
-        model: "gpt-4o",
+        model: "gpt-4.1",
         input: "Write a haiku about programming"
       )
 
@@ -18,7 +18,7 @@ defmodule OpenAI.Responses do
 
       # Create a response with tools and options
       {:ok, response} = OpenAI.Responses.create(
-        model: "gpt-4o",
+        model: "gpt-4.1",
         input: "What's the weather like in Paris?",
         tools: [%{type: "web_search_preview"}],
         temperature: 0.7
@@ -26,7 +26,7 @@ defmodule OpenAI.Responses do
 
       # Stream a response
       stream = OpenAI.Responses.create_stream(
-        model: "gpt-4o",
+        model: "gpt-4.1",
         input: "Tell me a story"
       )
       Enum.each(stream, fn event -> IO.inspect(event) end)
@@ -40,7 +40,7 @@ defmodule OpenAI.Responses do
   ## Parameters
 
     * `opts` - Keyword list containing the request parameters:
-      * `:model` - The model ID to use (e.g., "gpt-4o"). *This option is required.*
+      * `:model` - The model ID to use (e.g., "gpt-4.1"). *This option is required.*
       * `:input` - The text prompt or structured input message. *This option is required.*
       * `:tools` - List of tools to make available to the model
       * `:instructions` - System instructions for the model
@@ -76,18 +76,18 @@ defmodule OpenAI.Responses do
   ## Parameters
 
     * `opts` - Keyword list containing the request parameters:
-      * `:model` - The model ID to use (e.g., "gpt-4o"). *This option is required.*
+      * `:model` - The model ID to use (e.g., "gpt-4.1"). *This option is required.*
       * `:input` - The text prompt or structured input message. *This option is required.*
       * Other options supported by `create/1`
 
   ## Examples
 
       # Print each event as it arrives
-      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4.1", input: "Tell me a story")
       Enum.each(stream, &IO.inspect/1)
 
       # Process text deltas in real-time
-      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4.1", input: "Tell me a story")
       text_stream = OpenAI.Responses.Stream.text_deltas(stream)
 
       # This preserves streaming behavior (one chunk at a time)
@@ -197,7 +197,7 @@ defmodule OpenAI.Responses do
 
   ## Examples
 
-      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4.1", input: "Tell me a story")
       text_stream = OpenAI.Responses.text_deltas(stream)
 
       # Print text deltas as they arrive (real-time output)
@@ -209,7 +209,7 @@ defmodule OpenAI.Responses do
       IO.puts("")   # Add a newline at the end
 
       # Create a typing effect
-      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4.1", input: "Tell me a story")
       text_stream = OpenAI.Responses.text_deltas(stream)
 
       text_stream
@@ -242,7 +242,7 @@ defmodule OpenAI.Responses do
   ## Examples
 
       # Get a streaming response
-      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4.1", input: "Tell me a story")
 
       # Collect all events into a single response object
       response = OpenAI.Responses.collect_stream(stream)
@@ -318,7 +318,7 @@ defmodule OpenAI.Responses do
 
     * `schema` - The schema definition for structured output
     * `opts` - Keyword list containing the request parameters:
-      * `:model` - The model ID to use (e.g., "gpt-4o"). *This option is required.*
+      * `:model` - The model ID to use (e.g., "gpt-4.1"). *This option is required.*
       * `:input` - The text prompt or structured input message. *This option is required.*
       * `:schema_name` - Optional name for the schema (default: "data")
       * `:strict` - Whether the output must conform strictly to the schema (default: true)
@@ -344,7 +344,7 @@ defmodule OpenAI.Responses do
       # Create a response with structured output
       {:ok, result} = OpenAI.Responses.parse(
         calendar_event_schema,
-        model: "gpt-4o",
+        model: "gpt-4.1",
         input: "Alice and Bob are going to a science fair on Friday.",
         schema_name: "event"
       )

@@ -12,7 +12,7 @@ Add `openai_responses` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:openai_responses, "~> 0.1.0"}
+    {:openai_responses, "~> 0.3.0"}
   ]
 end
 ```
@@ -26,11 +26,11 @@ Set your OpenAI API key using one of these methods:
 System.put_env("OPENAI_API_KEY", "your-api-key")
 
 # 2. Passing directly to functions
-OpenAI.Responses.create("gpt-4o", "Hello", api_key: "your-api-key")
+OpenAI.Responses.create(model: "gpt-4.1", prompt: "Hello", api_key: "your-api-key")
 
 # 3. Creating a custom client
 client = OpenAI.Responses.Client.new(api_key: "your-api-key")
-OpenAI.Responses.create("gpt-4o", "Hello", client: client)
+OpenAI.Responses.create(model: "gpt-4.1", prompt: "Hello", client: client)
 ```
 
 ## Basic Usage
@@ -38,7 +38,7 @@ OpenAI.Responses.create("gpt-4o", "Hello", client: client)
 ### Creating a Simple Response
 
 ```elixir
-{:ok, response} = OpenAI.Responses.create("gpt-4o", "Write a haiku about programming")
+{:ok, response} = OpenAI.Responses.create(model: "gpt-4.1", prompt: "Write a haiku about programming")
 
 # Extract the text output
 text = OpenAI.Responses.Helpers.output_text(response)
@@ -53,8 +53,8 @@ IO.inspect(token_usage)
 
 ```elixir
 {:ok, response} = OpenAI.Responses.create(
-  "gpt-4o",
-  "What's the weather like in Paris?",
+  model: "gpt-4.1",
+  prompt: "What's the weather like in Paris?",
   tools: [%{type: "web_search_preview"}],
   temperature: 0.7
 )
@@ -72,7 +72,7 @@ input_message = OpenAI.Responses.Helpers.create_input_message(
   "https://example.com/image.jpg"
 )
 
-{:ok, response} = OpenAI.Responses.create("gpt-4o", [input_message])
+{:ok, response} = OpenAI.Responses.create(model: "gpt-4.1", input: [input_message])
 
 # With local images (automatically encoded to Base64)
 input_message = OpenAI.Responses.Helpers.create_input_message(
@@ -81,7 +81,7 @@ input_message = OpenAI.Responses.Helpers.create_input_message(
   detail: "high"  # Optional detail level
 )
 
-{:ok, response} = OpenAI.Responses.create("gpt-4o", [input_message])
+{:ok, response} = OpenAI.Responses.create(model: "gpt-4.1", input: [input_message])
 
 # Or manually create the structured input
 input = [
@@ -97,7 +97,7 @@ input = [
   }
 ]
 
-{:ok, response} = OpenAI.Responses.create("gpt-4o", input)
+{:ok, response} = OpenAI.Responses.create(model: "gpt-4.1", input: input)
 ```
 
 ### Streaming Responses
@@ -107,7 +107,7 @@ keyword for more reliable streaming.
 
 ```elixir
 # Get a stream of events (returns an Enumerable)
-stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+stream = OpenAI.Responses.stream(model: "gpt-4.1", prompt: "Tell me a story")
 
 # Iterate over raw events as they arrive (true streaming)
 stream
@@ -115,7 +115,7 @@ stream
 |> Stream.run()
 
 # Print text deltas as they arrive (real-time output)
-stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+stream = OpenAI.Responses.stream(model: "gpt-4.1", prompt: "Tell me a story")
 text_stream = OpenAI.Responses.text_deltas(stream)
 
 # This preserves streaming behavior (one chunk at a time)
@@ -127,7 +127,7 @@ end)
 IO.puts("")   # Add a newline at the end
 
 # Create a typing effect
-stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+stream = OpenAI.Responses.stream(model: "gpt-4.1", prompt: "Tell me a story")
 text_stream = OpenAI.Responses.text_deltas(stream)
 
 text_stream
@@ -139,7 +139,7 @@ end)
 IO.puts("")
 
 # Collect a complete response from a stream
-stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+stream = OpenAI.Responses.stream(model: "gpt-4.1", prompt: "Tell me a story")
 response = OpenAI.Responses.collect_stream(stream)
 
 # Work with the collected response
@@ -190,4 +190,3 @@ documentation.
 ## License
 
 MIT
-

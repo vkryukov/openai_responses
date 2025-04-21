@@ -3,23 +3,23 @@ defmodule OpenAI.Responses.Stream do
   Utilities for working with OpenAI streaming responses.
 
   This module provides functions for transforming and consuming
-  streamed responses from the OpenAI API. 
+  streamed responses from the OpenAI API.
 
   ## Examples
 
       # Get text deltas as they arrive
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.stream("gpt-4.1", "Tell me a story")
       text_stream = OpenAI.Responses.Stream.text_deltas(stream)
-      
+
       # Print each text delta in real-time without duplication
       text_stream
-      |> Stream.each(fn delta -> 
+      |> Stream.each(fn delta ->
         IO.write(delta)
       end)
       |> Stream.run()
-      
+
       # Collect a complete response from a stream
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.stream("gpt-4.1", "Tell me a story")
       response = OpenAI.Responses.Stream.collect(stream)
   """
 
@@ -60,15 +60,15 @@ defmodule OpenAI.Responses.Stream do
   ## Returns
 
     * A stream of text chunks
-    
+
   ## Examples
 
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.stream("gpt-4.1", "Tell me a story")
       text_stream = OpenAI.Responses.Stream.text_deltas(stream)
-      
+
       # Print text deltas as they arrive (real-time output)
       text_stream
-      |> Stream.each(fn delta -> 
+      |> Stream.each(fn delta ->
         IO.write(delta)
       end)
       |> Stream.run()
@@ -159,15 +159,15 @@ defmodule OpenAI.Responses.Stream do
   ## Returns
 
     * The complete response map
-    
+
   ## Examples
 
       # Get a streaming response
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
-      
+      stream = OpenAI.Responses.stream("gpt-4.1", "Tell me a story")
+
       # Collect all events into a single response object
       response = OpenAI.Responses.Stream.collect(stream)
-      
+
       # Process the complete response
       text = OpenAI.Responses.Helpers.output_text(response)
       IO.puts(text)
@@ -220,4 +220,3 @@ defmodule OpenAI.Responses.Stream do
     collect(stream)
   end
 end
-

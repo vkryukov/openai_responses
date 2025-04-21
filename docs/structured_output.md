@@ -24,7 +24,7 @@ calendar_event_schema = Schema.object(%{
 # Create a response with structured output
 {:ok, result} = Responses.parse(
   calendar_event_schema,
-  model: "gpt-4o",
+  model: "gpt-4.1",
   input: "Alice and Bob are going to a science fair on Friday.",
   schema_name: "event"
 )
@@ -125,7 +125,7 @@ Use the `parse/2` function with options to get a structured response:
 ```elixir
 {:ok, result} = Responses.parse(
   my_schema,
-  model: "gpt-4o",
+  model: "gpt-4.1",
   input: "Extract information from this text..."
 )
 # Access parsed data with result.parsed
@@ -138,13 +138,13 @@ See the `examples/structured_output_example.exs` file for complete examples of u
 
 ## Supported Models
 
-Structured Outputs is available in OpenAI's latest large language models, starting with GPT-4o:
+Structured Outputs is available in OpenAI's latest large language models, starting with gpt-4.1:
 
 - `gpt-4.5-preview-2025-02-27` and later
 - `o3-mini-2025-1-31` and later
 - `o1-2024-12-17` and later
-- `gpt-4o-mini-2024-07-18` and later
-- `gpt-4o-2024-08-06` and later
+- `gpt-4.1-mini-2024-07-18` and later
+- `gpt-4.1-2024-08-06` and later
 
 Older models like `gpt-4-turbo` and earlier may use JSON mode instead.
 
