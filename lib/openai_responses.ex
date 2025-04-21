@@ -377,16 +377,10 @@ defmodule OpenAI.Responses do
       }
     }
 
-    # Construct a system message that instructs the model to extract structured data
-    # Use existing instructions if provided, otherwise default.
-    system_message = Keyword.get(opts, :instructions, "Extract the #{schema_name} information.")
-
     # Add the text format and system message to the options
     create_opts =
       opts
       |> Keyword.put(:text, text_format)
-      |> Keyword.put(:instructions, system_message)
-      # Remove schema-specific opts before passing to create
       |> Keyword.delete(:schema_name)
       |> Keyword.delete(:strict)
 
