@@ -21,10 +21,10 @@ alias OpenAI.Responses.Helpers
 
 ## Basic usage
 
-`create/2` requires just two arguments: the name of the model, and the input text:
+`create/1` requires a keyword list with at least two arguments: the model name and the input text:
 
 ```elixir
-{:ok, response} = Responses.create("gpt-4o", "Write a haiku about programming")
+{:ok, response} = Responses.create(model: "gpt-4o", input: "Write a haiku about programming")
 ```
 
 The `response` is just a map, and you can use helper functions to extract information from it:
@@ -45,25 +45,25 @@ Helpers.token_usage(response)
 Helpers.calculate_cost(response)
 ```
 
-You can also supplied additional parameters to the API call:
+You can also supply additional parameters to the API call using the keyword list:
 
 ```elixir
 {:ok, response} =
   Responses.create(
-    "gpt-4o",
-    "Do you need semicolons in Elixir",
+    model: "gpt-4o",
+    input: "Do you need semicolons in Elixir",
     instructions: "Talk like a pirate"
   )
 IO.puts Helpers.output_text(response)
 ```
 
-A *structured* input can be manually constructed and passed to `create/2`:
+A *structured* input can be manually constructed and passed to `create/1`:
 
 ```elixir
 {:ok, response} =
   Responses.create(
-    "gpt-4o",
-    [
+    model: "gpt-4o",
+    input: [
       %{role: "user", content: "knock knock."},
       %{role: "assistant", content: "Who's there?"},
       %{role: "user", content: "Orange."}
@@ -86,7 +86,7 @@ input = [
   }
 ]
 
-{:ok, response} = OpenAI.Responses.create("gpt-4o", input)
+{:ok, response} = OpenAI.Responses.create(model: "gpt-4o", input: input)
 IO.puts Helpers.output_text(response)
 ```
 
@@ -143,13 +143,13 @@ The helper function eliminates boilerplate code, handles encoding of local image
 The usage of built-in tools can be illustrated by the following example:
 
 ```elixir
-{:ok, response_no_tools} = Responses.create("gpt-4o", "What's the weather in San Francisco?")
+{:ok, response_no_tools} = Responses.create(model: "gpt-4o", input: "What's the weather in San Francisco?")
 IO.puts(Helpers.output_text(response_no_tools))
 ```
 
 ```elixir
 {:ok, response_with_search} =
-  Responses.create("gpt-4o", "What's the weather in San Francisco?",
+  Responses.create(model: "gpt-4o", input: "What's the weather in San Francisco?",
     tools: [%{type: "web_search_preview"}],
     temperature: 0.7
   )
@@ -166,13 +166,12 @@ The new Responses API makes it much easier to continue the conversation, without
 ```elixir
 {:ok, response} =
   Responses.create(
-    "gpt-4o",
-    """
+    model: "gpt-4o",
+    input: """
     Give me the names of the first 6 U.S. presidents. Include their names, dates of birth and death,
     and information on their terms. Provide some interesting facts about each
     """,
-    instructions:
-      "Talk like a pirate in all your responses, including all the interesting facts."
+    instructions: "Talk like a pirate in all your responses, including all the interesting facts."
   )
 
 Helpers.output_text(response) |> IO.puts()
@@ -182,16 +181,16 @@ Now we can get information about the next 6 presidents, without explicitly repea
 
 ```elixir
 {:ok, next_response} =
-  Responses.create("gpt-4o", "next 6", previous_response_id: response["id"])
+  Responses.create(model: "gpt-4o", input: "next 6", previous_response_id: response["id"])
 
 Helpers.output_text(next_response) |> IO.puts()
 ```
 
 ```elixir
 {:ok, next_response2} =
-  Responses.create("gpt-4o", "next 6", previous_response_id: next_response["id"])
+  Responses.create(model: "gpt-4o", input: "next 6", previous_response_id: next_response["id"])
 {:ok, next_response3} =
-  Responses.create("gpt-4o", "next 6", previous_response_id: next_response2["id"])
+  Responses.create(model: "gpt-4o", input: "next 6", previous_response_id: next_response2["id"])
 ```
 
 Let's compare the token usage of these two requests. As you can see, even though the *explicit* prompt we supplied was very short, OpenAI still takes into account all the relevant input tokens from the prompt. However, for system prompts over 1024 bytes, OpenAI enables caching automatically, which can be seen below:
@@ -219,12 +218,13 @@ calendar_event_schema = Schema.object(%{
 })
 
 # Parse a response with structured output
-{:ok, event} = Responses.parse(
-  "gpt-4o", 
-  "Alice and Bob are going to a science fair on Friday.", 
+{:ok, result} = Responses.parse(
   calendar_event_schema,
+  model: "gpt-4o",
+  input: "Alice and Bob are going to a science fair on Friday.",
   schema_name: "event"
 )
+event = result.parsed
 
 # Access the parsed data
 event.parsed
@@ -242,9 +242,9 @@ math_reasoning_schema = Schema.object(%{
 
 # Parse with the complex schema
 {:ok, solution} = Responses.parse(
-  "gpt-4o", 
-  "Solve 8x + 7 = -23", 
-  math_reasoning_schema
+  math_reasoning_schema,
+  model: "gpt-4o",
+  input: "Solve 8x + 7 = -23"
 )
 
 solution.parsed
@@ -273,7 +273,7 @@ frame = Kino.Frame.new()
 Kino.render(frame)
 
 # Create a stream from OpenAI
-stream = Responses.stream("gpt-4o", "Write a short poem about coding in Elixir")
+stream = Responses.stream(model: "gpt-4o", input: "Write a short poem about coding in Elixir")
 
 # Extract text deltas - no need for initializing a stream handler
 text_stream = Responses.text_deltas(stream)
