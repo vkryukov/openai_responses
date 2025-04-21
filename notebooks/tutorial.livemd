@@ -2,8 +2,8 @@
 
 ```elixir
 Mix.install([
-  # {:openai_responses, "~> 0.3.0"},
-  {:openai_responses, path: "~/src/openai_responses"},
+  {:openai_responses, "~> 0.3.0"},
+  # {:openai_responses, path: "~/src/openai_responses"},
   {:kino, "~> 0.11.0"}
 ])
 ```
@@ -301,4 +301,4 @@ Kino.Frame.append(frame, Kino.Markdown.new("\n\n*Generation complete* ✨"))
 :done
 ```
 
-<!-- livebook:{"offset":8590,"stamp":{"token":"XCP.cMqu3uttX6-r5XAgmXcslS-g1DjaK0Qnp3E75uUSNChKdlerUsb5HGN3HSlNm3iwx8vErBTtLqGjtk9cutnD-29oisIc7uK9SF2kGgJH_nCeoWUVvesL9ww","version":2}} -->
+<!-- livebook:{"offset":8590,"stamp":{"token":"XCP.5MGlElgFvRAvL_fxgd1CJi-9RMI-GmxolRpYtN1KlTICcwfvXlEJoQMzk8uqvJMWY-ddghg9DedlofaK5FJdPxOBAqZwBprIkJqFO31S2sJpDdKR1WIjs5I","version":2}} -->
