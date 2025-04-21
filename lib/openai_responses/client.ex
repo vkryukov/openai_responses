@@ -17,10 +17,12 @@ defmodule OpenAI.Responses.Client do
     * `:api_key` - Your OpenAI API key (overrides environment variable)
     * `:api_base` - The base URL for API requests (default: "https://api.openai.com/v1")
     * `:req_options` - Additional options to pass to Req
+    * `:request_logger` - Optional 1-arity function to log requests. Receives the `Req.Request` struct before the request is sent.
   """
   @spec new(keyword()) :: map()
   def new(opts \\ []) do
     config = Map.new(opts)
+    request_logger = Map.get(config, :request_logger)
 
     api_key =
       case {Map.get(config, :api_key), System.get_env("OPENAI_API_KEY")} do
@@ -49,7 +51,14 @@ defmodule OpenAI.Responses.Client do
     ]
 
     # User-provided req_options will override the base options
-    Req.new(base_req_options ++ req_options)
+    req = Req.new(base_req_options ++ req_options)
+
+    # Add custom request logger step if provided and valid
+    if is_function(request_logger, 1) do
+      Req.Request.prepend_request_steps(req, custom_request_logger: request_logger)
+    else
+      req
+    end
   end
 
   @doc """
