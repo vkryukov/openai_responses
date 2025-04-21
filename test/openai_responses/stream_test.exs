@@ -1,8 +1,6 @@
 defmodule OpenAI.Responses.StreamTest do
   use ExUnit.Case, async: true
 
-  alias OpenAI.Responses.Stream
-
   describe "text_deltas/1" do
     test "extracts text deltas correctly, skipping done/completed text" do
       stream_events = [

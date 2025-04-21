@@ -12,7 +12,7 @@ defmodule OpenAI.ResponsesTest do
   # Set default model for integration tests
   @default_model "gpt-4.1-nano"
   # Set a longer timeout for API calls in integration tests
-  @tag timeout: 60000
+  @moduletag timeout: 60000
 
   describe "Responses module structure" do
     test "modules are properly defined" do
