@@ -7,6 +7,7 @@ defmodule OpenAI.Responses.Client do
   """
 
   @api_base "https://api.openai.com/v1"
+  @default_timeout 60_000
 
   @doc """
   Creates a new API client.
@@ -39,12 +40,12 @@ defmodule OpenAI.Responses.Client do
     api_base = Map.get(config, :api_base, @api_base)
     req_options = Map.get(config, :req_options, [])
 
-    # Base options including a default 30-second receive timeout
+    # Base options including a default 60-second receive timeout
     base_req_options = [
       base_url: api_base,
       auth: {:bearer, api_key},
       json: true,
-      receive_timeout: 30_000
+      receive_timeout: @default_timeout
     ]
 
     # User-provided req_options will override the base options
@@ -143,7 +144,7 @@ defmodule OpenAI.Responses.Client do
             {[event], task}
         after
           # Timeout after 30 seconds of inactivity
-          30_000 ->
+          @default_timeout ->
             Task.shutdown(task, :brutal_kill)
             {:halt, task}
         end
