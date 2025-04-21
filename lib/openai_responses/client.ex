@@ -6,8 +6,6 @@ defmodule OpenAI.Responses.Client do
   including authentication, request formatting, and response parsing.
   """
 
-  alias OpenAI.Responses.Config
-
   @api_base "https://api.openai.com/v1"
 
   @doc """
@@ -21,10 +19,25 @@ defmodule OpenAI.Responses.Client do
   """
   @spec new(keyword()) :: map()
   def new(opts \\ []) do
-    config = Config.new(opts)
-    api_key = Config.api_key(config)
-    api_base = Config.get(config, :api_base, @api_base)
-    req_options = Config.get(config, :req_options, [])
+    config = Map.new(opts)
+
+    api_key =
+      case {Map.get(config, :api_key), System.get_env("OPENAI_API_KEY")} do
+        {key, _} when is_binary(key) and key != "" ->
+          key
+
+        {nil, key} when is_binary(key) and key != "" ->
+          key
+
+        {nil, nil} ->
+          raise "OpenAI API key not provided. Set the OPENAI_API_KEY environment variable or pass :api_key in the config."
+
+        _ ->
+          raise "Invalid OpenAI API key provided."
+      end
+
+    api_base = Map.get(config, :api_base, @api_base)
+    req_options = Map.get(config, :req_options, [])
 
     # Base options including a default 30-second receive timeout
     base_req_options = [
