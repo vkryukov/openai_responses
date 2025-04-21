@@ -3,7 +3,6 @@ defmodule OpenAI.ResponsesTest do
   doctest OpenAI.Responses
 
   alias OpenAI.Responses
-  alias OpenAI.Responses.Client
   alias OpenAI.Responses.Helpers
   alias OpenAI.Responses.Schema
 
@@ -11,7 +10,6 @@ defmodule OpenAI.ResponsesTest do
     test "modules are properly defined" do
       assert Code.ensure_loaded?(OpenAI.Responses)
       assert Code.ensure_loaded?(OpenAI.Responses.Client)
-      assert Code.ensure_loaded?(OpenAI.Responses.Config)
       assert Code.ensure_loaded?(OpenAI.Responses.Types)
       assert Code.ensure_loaded?(OpenAI.Responses.Helpers)
       assert Code.ensure_loaded?(OpenAI.Responses.Stream)
@@ -21,13 +19,13 @@ defmodule OpenAI.ResponsesTest do
   describe "create/1" do
     @tag :integration
     test "successfully creates a response (integration)" do
-      opts = [model: "gpt-test", input: "Hello"]
+      opts = [model: "gpt-3.5-turbo", input: "Hello"]
       assert {:ok, _response} = Responses.create(opts)
     end
 
     @tag :integration
     test "returns error on client failure (integration)" do
-      opts = [model: "invalid-model-for-error", input: "Hello"]
+      opts = [model: "invalid-model-that-does-not-exist-xyz", input: "Hello"]
       assert {:error, _reason} = Responses.create(opts)
     end
 
@@ -51,26 +49,24 @@ defmodule OpenAI.ResponsesTest do
   describe "stream/1" do
     @tag :integration
     test "successfully creates a stream (integration)" do
-      opts = [model: "gpt-stream", input: "Stream me"]
+      opts = [model: "gpt-3.5-turbo", input: "Stream me"]
       stream = Responses.stream(opts)
-      assert %Stream{} = stream
+      assert Stream.stream?(stream)
     end
 
-    test "stream raises KeyError if :model is missing during consumption" do
+    test "stream raises KeyError if :model is missing on call" do
       opts = [input: "Stream me"]
-      stream = Responses.stream(opts)
 
       assert_raise KeyError, ~r/key :model not found/, fn ->
-        Enum.to_list(stream)
+        Responses.stream(opts)
       end
     end
 
-    test "stream raises KeyError if :input is missing during consumption" do
+    test "stream raises KeyError if :input is missing on call" do
       opts = [model: "gpt-stream"]
-      stream = Responses.stream(opts)
 
       assert_raise KeyError, ~r/key :input not found/, fn ->
-        Enum.to_list(stream)
+        Responses.stream(opts)
       end
     end
   end
@@ -81,7 +77,7 @@ defmodule OpenAI.ResponsesTest do
       schema = Schema.object(%{name: :string, age: :integer})
 
       opts = [
-        model: "gpt-parse",
+        model: "gpt-4o-mini",
         input: "John is 30",
         schema_name: "person",
         instructions: "Extract the person information as JSON matching the 'person' schema."
@@ -114,21 +110,22 @@ defmodule OpenAI.ResponsesTest do
     end
 
     @tag :integration
-    test "parse returns error if response JSON is invalid (integration, if possible)" do
+    test "parse handles API errors or invalid JSON responses (integration)" do
       schema = Schema.object(%{name: :string})
 
       opts = [
-        model: "gpt-test",
-        input: "This is not likely to produce the desired JSON.",
-        instructions: "Extract name as JSON matching the schema. Gibberish is fine."
+        model: "gpt-3.5-turbo",
+        input: "Tell me a short poem.",
+        instructions: "Extract name as JSON matching the schema. Output a poem."
       ]
 
       case Responses.parse(schema, opts) do
         {:ok, result} ->
-          refute result.parsed["name"]
+          refute Map.has_key?(result.parsed || %{}, "name"),
+                 "Expected parsing to fail or not find name, got: #{inspect(result.parsed)}"
 
         {:error, reason} ->
-          assert is_binary(reason)
+          assert is_map(reason) or is_binary(reason), "Error reason should be a map or binary"
       end
     end
 

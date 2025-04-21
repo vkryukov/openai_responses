@@ -20,7 +20,16 @@ defmodule OpenAI.Responses.StructuredOutputTest do
     prompt = "Alice and Bob are going to a science fair on Friday."
 
     # Test the parse function
-    case Responses.parse("gpt-4o", prompt, calendar_event_schema, schema_name: "event") do
+    opts = [
+      # Or another capable model
+      model: "gpt-4o",
+      input: prompt,
+      schema_name: "event"
+      # Add other necessary opts like instructions if parse/2 requires them implicitly
+      # instructions: "Extract event details as per the 'event' schema."
+    ]
+
+    case Responses.parse(calendar_event_schema, opts) do
       {:ok, response} ->
         parsed_data = response.parsed
         # Validate the parsed data structure
