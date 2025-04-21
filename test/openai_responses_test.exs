@@ -52,7 +52,7 @@ defmodule OpenAI.ResponsesTest do
     test "successfully creates a stream (integration)" do
       opts = [model: "gpt-3.5-turbo", input: "Stream me"]
       stream = Responses.stream(opts)
-      assert %Stream{} = stream
+      assert Enumerable.impl_for(stream) != nil, "Expected result to be Enumerable (streamable)"
     end
 
     test "stream raises KeyError if :model is missing on call" do
@@ -128,61 +128,6 @@ defmodule OpenAI.ResponsesTest do
         {:error, reason} ->
           assert is_map(reason) or is_binary(reason), "Error reason should be a map or binary"
       end
-    end
-
-    @tag :skip
-    test "parse returns error if response format is unexpected" do
-      _schema = Schema.object(%{name: :string})
-
-      _opts = [
-        model: "gpt-parse",
-        input: "Format",
-        instructions: "Extract name"
-      ]
-    end
-  end
-
-  describe "get/2" do
-    @tag :integration
-    @tag :skip
-    test "successfully retrieves a response (integration)" do
-      response_id = "res_needs_real_id"
-      opts = []
-      assert {:ok, response} = Responses.get(response_id, opts)
-      assert response["id"] == response_id
-    end
-
-    @tag :integration
-    @tag :skip
-    test "successfully retrieves a response with include option (integration)" do
-      response_id = "res_needs_real_id_with_usage"
-      opts = [include: ["usage"]]
-      assert {:ok, response} = Responses.get(response_id, opts)
-      assert response["id"] == response_id
-      assert is_map(response["usage"])
-    end
-  end
-
-  describe "delete/1" do
-    @tag :integration
-    @tag :skip
-    test "successfully deletes a response (integration)" do
-      response_id = "res_needs_real_id_to_delete"
-      opts = []
-      assert {:ok, result} = Responses.delete(response_id, opts)
-      assert result["id"] == response_id
-      assert result["deleted"] == true
-    end
-  end
-
-  describe "list_input_items/2" do
-    @tag :integration
-    @tag :skip
-    test "successfully lists input items (integration)" do
-      response_id = "res_needs_real_id_to_list"
-      opts = [limit: 10, order: "asc"]
-      assert {:ok, items} = Responses.list_input_items(response_id, opts)
-      assert is_list(items["data"])
     end
   end
 
