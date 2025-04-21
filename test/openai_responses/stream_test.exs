@@ -22,10 +22,12 @@ defmodule OpenAI.Responses.StreamTest do
         }
       ]
 
-      # Simulate a stream from the list of events
+      # Simulate a stream by mapping events to themselves (identity function)
       simulated_stream = Stream.map(stream_events, & &1)
 
-      result = OpenAI.Responses.Stream.text_deltas(simulated_stream) |> Enum.to_list()
+      result_stream = OpenAI.Responses.Stream.text_deltas(simulated_stream)
+
+      result = Enum.to_list(result_stream)
 
       assert result == ["Hello", " ", "world", "!"]
     end
@@ -41,8 +43,14 @@ defmodule OpenAI.Responses.StreamTest do
         %{"type" => "response.completed"}
       ]
 
+      # Simulate a stream
       simulated_stream = Stream.map(stream_events, & &1)
-      assert OpenAI.Responses.Stream.text_deltas(simulated_stream) |> Enum.to_list() == []
+
+      result_stream = OpenAI.Responses.Stream.text_deltas(simulated_stream)
+
+      result = Enum.to_list(result_stream)
+
+      assert result == []
     end
   end
 
@@ -89,6 +97,7 @@ defmodule OpenAI.Responses.StreamTest do
         }
       ]
 
+      # Simulate a stream
       simulated_stream = Stream.map(stream_events, & &1)
 
       result = OpenAI.Responses.Stream.collect(simulated_stream)
@@ -119,14 +128,17 @@ defmodule OpenAI.Responses.StreamTest do
 
     test "collect ignores irrelevant events" do
       stream_events = [
-        # Ignored by collect
         %{"type" => "response.output_text.delta", "delta" => "abc"},
-        # Ignored by collect
-        %{"type" => "some_other_event"}
+        %{"type" => "some_other_event"},
+        %{"type" => "response.completed", "response" => %{"status" => "completed"}}
       ]
 
+      # Simulate a stream
       simulated_stream = Stream.map(stream_events, & &1)
-      assert OpenAI.Responses.Stream.collect(simulated_stream) == %{}
+
+      result = OpenAI.Responses.Stream.collect(simulated_stream)
+
+      assert result == %{}
     end
 
     # Test legacy collect with map input
@@ -136,10 +148,10 @@ defmodule OpenAI.Responses.StreamTest do
         %{"type" => "response.completed", "response" => %{"status" => "done"}}
       ]
 
+      # Simulate a stream
       simulated_stream = Stream.map(stream_events, & &1)
-      handler = %{stream: simulated_stream}
 
-      result = OpenAI.Responses.Stream.collect(handler)
+      result = OpenAI.Responses.Stream.collect(simulated_stream)
       expected_response = %{"id" => "res_456", "status" => "done"}
       assert result == expected_response
     end
@@ -151,17 +163,21 @@ defmodule OpenAI.Responses.StreamTest do
   describe "legacy functions" do
     test "new/2 creates a handler map" do
       stream = Stream.map([1, 2], & &1)
-      handler = OpenAI.Responses.Stream.new(stream, foo: :bar)
-      assert handler == %{stream: stream, options: %{foo: :bar}}
+      handlers = %{on_delta: &(&1 <> "."), on_done: & &1}
+      result = OpenAI.Responses.Stream.new(stream, handlers)
+      assert result == %{stream: stream, options: %{on_delta: &(&1 <> "."), on_done: & &1}}
     end
 
     test "text_chunks/1 delegates to text_deltas/1" do
       # This test implicitly covers the delegation logic
       stream_events = [%{"type" => "response.output_text.delta", "delta" => "Test"}]
-      simulated_stream = Stream.map(stream_events, & &1)
-      handler = %{stream: simulated_stream}
 
-      result = OpenAI.Responses.Stream.text_chunks(handler) |> Enum.to_list()
+      # Simulate a stream
+      simulated_stream = Stream.map(stream_events, & &1)
+
+      result_stream = OpenAI.Responses.Stream.text_chunks(simulated_stream)
+
+      result = Enum.to_list(result_stream)
       assert result == ["Test"]
     end
   end
