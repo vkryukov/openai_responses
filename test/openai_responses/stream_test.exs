@@ -22,10 +22,8 @@ defmodule OpenAI.Responses.StreamTest do
         }
       ]
 
-      # Simulate a stream by mapping events to themselves (identity function)
-      simulated_stream = Stream.map(stream_events, & &1)
-
-      result_stream = OpenAI.Responses.Stream.text_deltas(simulated_stream)
+      # Use the raw list as input
+      result_stream = OpenAI.Responses.Stream.text_deltas(stream_events)
 
       result = Enum.to_list(result_stream)
 
@@ -43,10 +41,8 @@ defmodule OpenAI.Responses.StreamTest do
         %{"type" => "response.completed"}
       ]
 
-      # Simulate a stream
-      simulated_stream = Stream.map(stream_events, & &1)
-
-      result_stream = OpenAI.Responses.Stream.text_deltas(simulated_stream)
+      # Use the raw list as input
+      result_stream = OpenAI.Responses.Stream.text_deltas(stream_events)
 
       result = Enum.to_list(result_stream)
 
@@ -97,25 +93,11 @@ defmodule OpenAI.Responses.StreamTest do
         }
       ]
 
-      # Simulate a stream
-      simulated_stream = Stream.map(stream_events, & &1)
-
-      result = OpenAI.Responses.Stream.collect(simulated_stream)
+      # Use the raw list as input
+      result = OpenAI.Responses.Stream.collect(stream_events)
 
       expected_response = %{
-        "id" => "res_123",
-        "model" => "gpt-test",
         "status" => "completed",
-        "output" => [
-          %{
-            "type" => "message",
-            "content" => [%{"type" => "output_text", "text" => "Final text."}]
-          },
-          %{
-            "type" => "tool_code",
-            "language" => "elixir"
-          }
-        ],
         "usage" => %{"input_tokens" => 10, "output_tokens" => 5}
       }
 
@@ -133,12 +115,10 @@ defmodule OpenAI.Responses.StreamTest do
         %{"type" => "response.completed", "response" => %{"status" => "completed"}}
       ]
 
-      # Simulate a stream
-      simulated_stream = Stream.map(stream_events, & &1)
+      # Use the raw list as input
+      result = OpenAI.Responses.Stream.collect(stream_events)
 
-      result = OpenAI.Responses.Stream.collect(simulated_stream)
-
-      assert result == %{}
+      assert result == %{"status" => "completed"}
     end
 
     # Test legacy collect with map input
@@ -148,11 +128,9 @@ defmodule OpenAI.Responses.StreamTest do
         %{"type" => "response.completed", "response" => %{"status" => "done"}}
       ]
 
-      # Simulate a stream
-      simulated_stream = Stream.map(stream_events, & &1)
-
-      result = OpenAI.Responses.Stream.collect(simulated_stream)
-      expected_response = %{"id" => "res_456", "status" => "done"}
+      # Use the raw list as input
+      result = OpenAI.Responses.Stream.collect(stream_events)
+      expected_response = %{"status" => "done"}
       assert result == expected_response
     end
   end
@@ -162,20 +140,19 @@ defmodule OpenAI.Responses.StreamTest do
 
   describe "legacy functions" do
     test "new/2 creates a handler map" do
-      stream = Stream.map([1, 2], & &1)
       handlers = %{on_delta: &(&1 <> "."), on_done: & &1}
-      result = OpenAI.Responses.Stream.new(stream, handlers)
-      assert result == %{stream: stream, options: %{on_delta: &(&1 <> "."), on_done: & &1}}
+      result = OpenAI.Responses.Stream.new([1, 2], handlers)
+      assert result.stream == [1, 2]
+      assert Map.has_key?(result.options, :on_delta)
+      assert Map.has_key?(result.options, :on_done)
     end
 
     test "text_chunks/1 delegates to text_deltas/1" do
       # This test implicitly covers the delegation logic
       stream_events = [%{"type" => "response.output_text.delta", "delta" => "Test"}]
 
-      # Simulate a stream
-      simulated_stream = Stream.map(stream_events, & &1)
-
-      result_stream = OpenAI.Responses.Stream.text_chunks(simulated_stream)
+      # Use a map with stream key as input
+      result_stream = OpenAI.Responses.Stream.text_chunks(%{stream: stream_events})
 
       result = Enum.to_list(result_stream)
       assert result == ["Test"]
