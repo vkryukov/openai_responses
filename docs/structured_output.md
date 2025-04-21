@@ -22,16 +22,17 @@ calendar_event_schema = Schema.object(%{
 })
 
 # Create a response with structured output
-{:ok, event} = Responses.parse(
-  "gpt-4o", 
-  "Alice and Bob are going to a science fair on Friday.", 
+{:ok, result} = Responses.parse(
   calendar_event_schema,
+  model: "gpt-4o",
+  input: "Alice and Bob are going to a science fair on Friday.",
   schema_name: "event"
 )
 
 # Access the parsed data
-IO.puts("Event: #{event["name"]} on #{event["date"]}")
-IO.puts("Participants: #{Enum.join(event["participants"], ", ")}")
+IO.puts("Event: #{result.parsed["name"]} on #{result.parsed["date"]}")
+IO.puts("Participants: #{Enum.join(result.parsed["participants"], ", ")}")
+IO.inspect(result.token_usage, label: "Token Usage")
 ```
 
 ## Defining Schemas
@@ -119,14 +120,15 @@ schema = Schema.object(%{
 
 ### Regular Parsing
 
-Use the `parse/4` function to get a structured response:
+Use the `parse/2` function with options to get a structured response:
 
 ```elixir
-{:ok, data} = Responses.parse(
-  "gpt-4o", 
-  "Extract information from this text...", 
-  my_schema
+{:ok, result} = Responses.parse(
+  my_schema,
+  model: "gpt-4o",
+  input: "Extract information from this text..."
 )
+# Access parsed data with result.parsed
 ```
 
 
