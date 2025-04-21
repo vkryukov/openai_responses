@@ -6,9 +6,8 @@ defmodule OpenAI.Responses.Client do
   including authentication, request formatting, and response parsing.
   """
 
-  alias OpenAI.Responses.Config
-
   @api_base "https://api.openai.com/v1"
+  @default_timeout 60_000
 
   @doc """
   Creates a new API client.
@@ -18,21 +17,48 @@ defmodule OpenAI.Responses.Client do
     * `:api_key` - Your OpenAI API key (overrides environment variable)
     * `:api_base` - The base URL for API requests (default: "https://api.openai.com/v1")
     * `:req_options` - Additional options to pass to Req
+    * `:request_logger` - Optional 1-arity function to log requests. Receives the `Req.Request` struct before the request is sent.
   """
   @spec new(keyword()) :: map()
   def new(opts \\ []) do
-    config = Config.new(opts)
-    api_key = Config.api_key(config)
-    api_base = Config.get(config, :api_base, @api_base)
-    req_options = Config.get(config, :req_options, [])
+    config = Map.new(opts)
+    request_logger = Map.get(config, :request_logger)
 
-    Req.new(
-      [
-        base_url: api_base,
-        auth: {:bearer, api_key},
-        json: true
-      ] ++ req_options
-    )
+    api_key =
+      case {Map.get(config, :api_key), System.get_env("OPENAI_API_KEY")} do
+        {key, _} when is_binary(key) and key != "" ->
+          key
+
+        {nil, key} when is_binary(key) and key != "" ->
+          key
+
+        {nil, nil} ->
+          raise "OpenAI API key not provided. Set the OPENAI_API_KEY environment variable or pass :api_key in the config."
+
+        _ ->
+          raise "Invalid OpenAI API key provided."
+      end
+
+    api_base = Map.get(config, :api_base, @api_base)
+    req_options = Map.get(config, :req_options, [])
+
+    # Base options including a default 60-second receive timeout
+    base_req_options = [
+      base_url: api_base,
+      auth: {:bearer, api_key},
+      json: true,
+      receive_timeout: @default_timeout
+    ]
+
+    # User-provided req_options will override the base options
+    req = Req.new(base_req_options ++ req_options)
+
+    # Add custom request logger step if provided and valid
+    if is_function(request_logger, 1) do
+      Req.Request.prepend_request_steps(req, custom_request_logger: request_logger)
+    else
+      req
+    end
   end
 
   @doc """
@@ -127,7 +153,7 @@ defmodule OpenAI.Responses.Client do
             {[event], task}
         after
           # Timeout after 30 seconds of inactivity
-          30_000 ->
+          @default_timeout ->
             Task.shutdown(task, :brutal_kill)
             {:halt, task}
         end

@@ -4,7 +4,7 @@ defmodule OpenaiResponses.MixProject do
   def project do
     [
       app: :openai_responses,
-      version: "0.2.1",
+      version: "0.3.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -14,18 +14,17 @@ defmodule OpenaiResponses.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger]
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
+      {:decimal, "~> 2.0"},
       {:ex_doc, "~> 0.29", only: :dev, runtime: false}
     ]
   end

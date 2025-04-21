@@ -129,22 +129,6 @@ Use the `parse/4` function to get a structured response:
 )
 ```
 
-### Streaming
-
-Use the `parse_stream/4` function to get a stream of structured chunks:
-
-```elixir
-stream = Responses.parse_stream(
-  "gpt-4o", 
-  "Generate a step-by-step solution...", 
-  my_schema
-)
-
-Enum.each(stream, fn chunk ->
-  # Process each chunk as it arrives
-  IO.inspect(chunk)
-end)
-```
 
 ## Examples
 

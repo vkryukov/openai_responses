@@ -8,71 +8,63 @@ defmodule OpenAI.Responses do
   ## Examples
 
       # Create a simple text response
-      {:ok, response} = OpenAI.Responses.create("gpt-4o", "Write a haiku about programming")
+      {:ok, response} = OpenAI.Responses.create(
+        model: "gpt-4o",
+        input: "Write a haiku about programming"
+      )
 
       # Extract the text from the response
       text = OpenAI.Responses.Helpers.output_text(response)
 
       # Create a response with tools and options
-      {:ok, response} = OpenAI.Responses.create("gpt-4o", "What's the weather like in Paris?",
+      {:ok, response} = OpenAI.Responses.create(
+        model: "gpt-4o",
+        input: "What's the weather like in Paris?",
         tools: [%{type: "web_search_preview"}],
         temperature: 0.7
       )
 
       # Stream a response
-      stream = OpenAI.Responses.create_stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.create_stream(
+        model: "gpt-4o",
+        input: "Tell me a story"
+      )
       Enum.each(stream, fn event -> IO.inspect(event) end)
   """
 
   alias OpenAI.Responses.Client
-  alias OpenAI.Responses.Types
 
   @doc ~S"""
-  Creates a new response with the specified model and input.
+  Creates a new response.
 
   ## Parameters
 
-    * `model` - The model ID to use (e.g., "gpt-4o")
-    * `input` - The text prompt or structured input message
-    * `opts` - Optional parameters for the request
+    * `opts` - Keyword list containing the request parameters:
+      * `:model` - The model ID to use (e.g., "gpt-4o"). *This option is required.*
+      * `:input` - The text prompt or structured input message. *This option is required.*
       * `:tools` - List of tools to make available to the model
       * `:instructions` - System instructions for the model
       * `:temperature` - Sampling temperature (0.0 to 2.0)
       * `:max_output_tokens` - Maximum number of tokens to generate
-      * `:stream` - Whether to stream the response
+      * `:stream` - Whether to stream the response (use `stream/1` for proper streaming)
       * `:previous_response_id` - ID of a previous response for continuation
       * All other parameters supported by the API
 
   ## Returns
 
     * `{:ok, response}` - On success, returns the response
-    * `{:error, error}` - On failure
+    * `{:error, error}` - On failure, potentially including `KeyError` if `:model` or `:input` are missing.
   """
-  @spec create(String.t(), String.t() | map() | list(), keyword()) ::
-          {:ok, map()} | {:error, any()}
-  def create(model, input, opts \\ []) do
+  @spec create(keyword()) :: {:ok, map()} | {:error, any()}
+  def create(opts) do
+    # model and input are fetched in prepare_create_payload! using Keyword.fetch!
     client = opts[:client] || Client.new(opts)
-    payload = prepare_create_payload(model, input, opts)
+    payload = prepare_create_payload(opts)
 
     case Client.request(client, :post, "/responses", payload) do
-      {:ok, response} -> {:ok, Types.response(response)}
+      {:ok, response} -> {:ok, response}
       error -> error
     end
-  end
-
-  @doc ~S"""
-  Creates a streaming response with the specified model and input.
-
-  This function is being maintained for backward compatibility.
-  New code should use `stream/3` instead.
-
-  ## Returns
-
-    * A stream of events representing the model's response
-  """
-  @spec create_stream(String.t(), String.t() | map() | list(), keyword()) :: Enumerable.t()
-  def create_stream(model, input, opts \\ []) do
-    stream(model, input, opts)
   end
 
   @doc ~S"""
@@ -83,18 +75,19 @@ defmodule OpenAI.Responses do
 
   ## Parameters
 
-    * `model` - The model ID to use (e.g., "gpt-4o")
-    * `input` - The text prompt or structured input message
-    * `opts` - Optional parameters for the request (same as `create/3`)
+    * `opts` - Keyword list containing the request parameters:
+      * `:model` - The model ID to use (e.g., "gpt-4o"). *This option is required.*
+      * `:input` - The text prompt or structured input message. *This option is required.*
+      * Other options supported by `create/1`
 
   ## Examples
 
       # Print each event as it arrives
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
       Enum.each(stream, &IO.inspect/1)
 
       # Process text deltas in real-time
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
       text_stream = OpenAI.Responses.Stream.text_deltas(stream)
 
       # This preserves streaming behavior (one chunk at a time)
@@ -106,13 +99,14 @@ defmodule OpenAI.Responses do
 
   ## Returns
 
-    * An Enumerable stream that yields events as they arrive
+    * An Enumerable stream that yields events as they arrive. Will raise `KeyError` during enumeration if `:model` or `:input` are missing.
   """
-  @spec stream(String.t(), String.t() | map() | list(), keyword()) :: Enumerable.t()
-  def stream(model, input, opts \\ []) do
+  @spec stream(keyword()) :: Enumerable.t()
+  def stream(opts) do
+    # model and input are fetched in prepare_create_payload! using Keyword.fetch!
+    # The actual fetch and potential raise will happen when the stream is consumed.
     client = opts[:client] || Client.new(opts)
-    payload = prepare_create_payload(model, input, Keyword.put(opts, :stream, true))
-
+    payload = prepare_create_payload(Keyword.put(opts, :stream, true))
     Client.stream(client, "/responses", payload)
   end
 
@@ -136,7 +130,7 @@ defmodule OpenAI.Responses do
     query = if opts[:include], do: %{include: opts[:include]}, else: %{}
 
     case Client.request(client, :get, "/responses/#{response_id}", nil, query) do
-      {:ok, response} -> {:ok, Types.response(response)}
+      {:ok, response} -> {:ok, response}
       error -> error
     end
   end
@@ -195,7 +189,7 @@ defmodule OpenAI.Responses do
 
   ## Parameters
 
-    * `stream` - The stream from OpenAI.Responses.stream/3
+    * `stream` - The stream from OpenAI.Responses.stream/1
 
   ## Returns
 
@@ -203,7 +197,7 @@ defmodule OpenAI.Responses do
 
   ## Examples
 
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
       text_stream = OpenAI.Responses.text_deltas(stream)
 
       # Print text deltas as they arrive (real-time output)
@@ -215,7 +209,7 @@ defmodule OpenAI.Responses do
       IO.puts("")   # Add a newline at the end
 
       # Create a typing effect
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
       text_stream = OpenAI.Responses.text_deltas(stream)
 
       text_stream
@@ -239,7 +233,7 @@ defmodule OpenAI.Responses do
 
   ## Parameters
 
-    * `stream` - The stream from OpenAI.Responses.stream/3
+    * `stream` - The stream from OpenAI.Responses.stream/1
 
   ## Returns
 
@@ -248,7 +242,7 @@ defmodule OpenAI.Responses do
   ## Examples
 
       # Get a streaming response
-      stream = OpenAI.Responses.stream("gpt-4o", "Tell me a story")
+      stream = OpenAI.Responses.stream(model: "gpt-4o", input: "Tell me a story")
 
       # Collect all events into a single response object
       response = OpenAI.Responses.collect_stream(stream)
@@ -264,13 +258,21 @@ defmodule OpenAI.Responses do
 
   # Private helpers
 
-  defp prepare_create_payload(model, input, opts) do
+  defp prepare_create_payload(opts) do
+    model = Keyword.fetch!(opts, :model)
+    input = Keyword.fetch!(opts, :input)
+
     base = %{
       model: model,
       input: prepare_input(input)
     }
 
-    Enum.reduce(opts, base, fn
+    opts
+    |> Keyword.delete(:model)
+    |> Keyword.delete(:input)
+    # Avoid sending client option to API
+    |> Keyword.delete(:client)
+    |> Enum.reduce(base, fn
       {:tools, tools}, acc ->
         Map.put(acc, :tools, prepare_tools(tools))
 
@@ -294,6 +296,7 @@ defmodule OpenAI.Responses do
         Map.put(acc, key, value)
 
       _, acc ->
+        # Ignore unknown keys
         acc
     end)
   end
@@ -308,22 +311,26 @@ defmodule OpenAI.Responses do
   @doc ~S"""
   Creates a response with structured output.
 
-  This function is similar to `create/3` but automatically parses the response
+  This function is similar to `create/1` but automatically parses the response
   according to the provided schema and returns the parsed data.
 
   ## Parameters
 
-    * `model` - The model ID to use (e.g., "gpt-4o")
-    * `input` - The text prompt or structured input message
     * `schema` - The schema definition for structured output
-    * `opts` - Optional parameters for the request
+    * `opts` - Keyword list containing the request parameters:
+      * `:model` - The model ID to use (e.g., "gpt-4o"). *This option is required.*
+      * `:input` - The text prompt or structured input message. *This option is required.*
       * `:schema_name` - Optional name for the schema (default: "data")
-      * All other options supported by `create/3`
+      * `:strict` - Whether the output must conform strictly to the schema (default: true)
+      * All other options supported by `create/1`
 
   ## Returns
 
-    * `{:ok, parsed_data}` - On success, returns the parsed data
-    * `{:error, error}` - On failure
+    * `{:ok, result_map}` - On success, returns a map containing:
+      * `:parsed` - The parsed data according to the schema.
+      * `:raw_response` - The complete, raw response map received from the API.
+      * `:token_usage` - The token usage map from the API response (e.g., `%{ "input_tokens" => 10, "output_tokens" => 50 }`), or `nil` if not present.
+    * `{:error, error}` - On failure, potentially including `KeyError` if `:model` or `:input` are missing.
 
   ## Examples
 
@@ -335,20 +342,28 @@ defmodule OpenAI.Responses do
       })
 
       # Create a response with structured output
-      {:ok, event} = OpenAI.Responses.parse(
-        "gpt-4o",
-        "Alice and Bob are going to a science fair on Friday.",
+      {:ok, result} = OpenAI.Responses.parse(
         calendar_event_schema,
+        model: "gpt-4o",
+        input: "Alice and Bob are going to a science fair on Friday.",
         schema_name: "event"
       )
 
-      # Access the parsed data
-      IO.puts("Event: #{event["name"]} on #{event["date"]}")
-      IO.puts("Participants: #{Enum.join(event["participants"], ", ")}")
+      # Access the parsed data and metadata
+      IO.puts("Event: #{result.parsed["name"]} on #{result.parsed["date"]}")
+      IO.puts("Participants: #{Enum.join(result.parsed["participants"], ", ")}")
+      IO.inspect(result.token_usage, label: "Token Usage")
   """
-  @spec parse(String.t(), String.t() | map() | list(), map(), keyword()) ::
-          {:ok, map()} | {:error, any()}
-  def parse(model, input, schema, opts \\ []) do
+  @spec parse(map(), keyword()) ::
+          {:ok,
+           %{
+             parsed: map() | list(),
+             raw_response: map(),
+             token_usage: map() | nil
+           }}
+          | {:error, any()}
+  def parse(schema, opts) do
+    # model and input are fetched in prepare_create_payload! via create/1
     schema_name = Keyword.get(opts, :schema_name, "data")
     strict = Keyword.get(opts, :strict, true)
 
@@ -362,105 +377,34 @@ defmodule OpenAI.Responses do
       }
     }
 
-    # Construct a system message that instructs the model to extract structured data
-    system_message = "Extract the #{schema_name} information."
-
     # Add the text format and system message to the options
-    opts = opts
-           |> Keyword.put(:text, text_format)
-           |> Keyword.put(:instructions, system_message)
+    create_opts =
+      opts
+      |> Keyword.put(:text, text_format)
+      |> Keyword.delete(:schema_name)
+      |> Keyword.delete(:strict)
 
-    case create(model, input, opts) do
+    case create(create_opts) do
       {:ok, response} ->
-        # Extract the parsed data from the response
+        # Extract the parsed data and metadata from the response
+        token_usage = Map.get(response, "usage")
+
         case extract_parsed_data(response) do
-          {:ok, data} -> {:ok, data}
-          {:error, error} -> {:error, error}
+          {:ok, parsed_data} ->
+            {:ok,
+             %{
+               parsed: parsed_data,
+               raw_response: response,
+               token_usage: token_usage
+             }}
+
+          {:error, error} ->
+            {:error, error}
         end
 
       error ->
         error
     end
-  end
-
-  @doc ~S"""
-  Creates a streaming response with structured output.
-
-  This function is similar to `stream/3` but automatically parses each chunk
-  according to the provided schema.
-
-  ## Parameters
-
-    * `model` - The model ID to use (e.g., "gpt-4o")
-    * `input` - The text prompt or structured input message
-    * `schema` - The schema definition for structured output
-    * `opts` - Optional parameters for the request
-      * `:schema_name` - Optional name for the schema (default: "data")
-      * All other options supported by `stream/3`
-
-  ## Returns
-
-    * A stream that yields parsed data chunks
-
-  ## Examples
-
-      # Define a schema
-      math_reasoning_schema = OpenAI.Responses.Schema.object(%{
-        steps: {:array, OpenAI.Responses.Schema.object(%{
-          explanation: :string,
-          output: :string
-        })},
-        final_answer: :string
-      })
-
-      # Stream a response with structured output
-      stream = OpenAI.Responses.parse_stream(
-        "gpt-4o",
-        "Solve 8x + 7 = -23",
-        math_reasoning_schema,
-        schema_name: "math_reasoning"
-      )
-
-      # Process the stream
-      Enum.each(stream, fn chunk ->
-        IO.inspect(chunk)
-      end)
-  """
-  @spec parse_stream(String.t(), String.t() | map() | list(), map(), keyword()) ::
-          Enumerable.t()
-  def parse_stream(model, input, schema, opts \\ []) do
-    schema_name = Keyword.get(opts, :schema_name, "data")
-    strict = Keyword.get(opts, :strict, true)
-
-    # Prepare the text format with the schema according to the new API format
-    text_format = %{
-      format: %{
-        type: "json_schema",
-        name: schema_name,
-        schema: schema,
-        strict: strict
-      }
-    }
-
-    # Construct a system message that instructs the model to extract structured data
-    system_message = "Extract the #{schema_name} information."
-
-    # Add the text format and system message to the options
-    opts = opts
-           |> Keyword.put(:text, text_format)
-           |> Keyword.put(:instructions, system_message)
-
-    # Get the stream
-    stream = stream(model, input, opts)
-
-    # Transform the stream to extract parsed data from each chunk
-    Stream.map(stream, fn chunk ->
-      case extract_parsed_data_from_chunk(chunk) do
-        {:ok, data} -> data
-        # Return the original chunk if parsing fails
-        {:error, _} -> chunk
-      end
-    end)
   end
 
   # Helper function to extract parsed data from a response
@@ -496,7 +440,9 @@ defmodule OpenAI.Responses do
                   rescue
                     _ -> nil
                   end
-                _ -> nil
+
+                _ ->
+                  nil
               end)
 
             _ ->
@@ -514,49 +460,6 @@ defmodule OpenAI.Responses do
 
       _ ->
         {:error, "Invalid response format"}
-    end
-  end
-
-  # Helper function to extract parsed data from a stream chunk
-  defp extract_parsed_data_from_chunk(chunk) do
-    case chunk do
-      # Handle output_text delta in the new API format
-      %{"delta" => %{"output_text" => output_text}} when is_binary(output_text) and output_text != "" ->
-        try do
-          {:ok, Jason.decode!(output_text)}
-        rescue
-          _ -> {:error, "Failed to parse JSON from output_text chunk"}
-        end
-
-      # Handle structured output in delta content for output_text type
-      %{"delta" => %{"content" => [%{"type" => "output_text", "text" => json_text}]}} ->
-        try do
-          {:ok, Jason.decode!(json_text)}
-        rescue
-          _ -> {:error, "Failed to parse JSON from chunk"}
-        end
-
-      # Handle any text in content array that might be JSON
-      %{"delta" => %{"content" => content}} when is_list(content) ->
-        # Look for text content that might be JSON
-        Enum.find_value(content, {:error, "No parsed data found"}, fn
-          %{"type" => "output_text", "text" => text} ->
-            try do
-              {:ok, Jason.decode!(text)}
-            rescue
-              _ -> nil
-            end
-          _ -> nil
-        end)
-
-      # Handle text chunks that might contain JSON
-      %{"delta" => %{"content" => content}} when is_binary(content) and content != "" ->
-        # We can't parse partial JSON, so we'll return an error
-        # The complete JSON will be handled when the stream is collected
-        {:error, "Partial content chunk"}
-
-      _ ->
-        {:error, "No parsed data in chunk"}
     end
   end
 end
