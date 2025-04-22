@@ -55,7 +55,12 @@ defmodule OpenAI.Responses.Client do
 
     # Add custom request logger step if provided and valid
     if is_function(request_logger, 1) do
-      Req.Request.prepend_request_steps(req, custom_request_logger: request_logger)
+      Req.Request.prepend_request_steps(req,
+        custom_request_logger: fn request ->
+          request_logger.(request)
+          request
+        end
+      )
     else
       req
     end
