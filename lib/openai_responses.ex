@@ -40,6 +40,7 @@ defmodule OpenAI.Responses do
   ## Parameters
 
     * `opts` - Keyword list containing the request parameters:
+      * `:client` - The parameters to initialize a custom client. See `Client.new/1` for more details.
       * `:model` - The model ID to use (e.g., "gpt-4.1"). *This option is required.*
       * `:input` - The text prompt or structured input message. *This option is required.*
       * `:tools` - List of tools to make available to the model
@@ -58,7 +59,7 @@ defmodule OpenAI.Responses do
   @spec create(keyword()) :: {:ok, map()} | {:error, any()}
   def create(opts) do
     # model and input are fetched in prepare_create_payload! using Keyword.fetch!
-    client = opts[:client] || Client.new(opts)
+    client = Client.new(Keyword.get(opts, :client, []))
     payload = prepare_create_payload(opts)
 
     case Client.request(client, :post, "/responses", payload) do
