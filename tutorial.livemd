@@ -1,0 +1,268 @@
+# Tutorial
+
+```elixir
+Mix.install([
+  {:openai_responses, path: "~/src/responses"},
+  {:kino, "~> 0.11.0"}
+])
+```
+
+## Introduction
+
+OpenAI.Responses is a [Small Development Kit](https://dashbit.co/blog/sdks-with-req-stripe) for the OpenAI [Responses](https://platform.openai.com/docs/api-reference/responses) API. It can get you started in no time, and automatically supports conversation state, structured responses, streaming, function calls, and cost calculations.
+
+If you want an industrial-grade library that supports multiple providers, you should instead consider one of [LangChain](https://hexdocs.pm/langchain/readme.html), [OpenaiEx](https://hexdocs.pm/openai_ex/OpenaiEx.html), or [Instructor](https://hexdocs.pm/instructor/Instructor.html). If, however, you want to start as quickly as possible without learning a new framework first, and are ready to trade the flexibility of choosing an LLM provider for the conveniences of OpenAI's latest API, you've come to the right place!
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Basic usage
+
+The basic usage is simple: set the `OPENAI_API_KEY` environment variable and add `openai_responses` to your `mix.exs`
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+def deps do
+  [ 
+    # ...
+    {:openai_responses, "~> 0.4.0"}
+  ]
+end
+```
+
+is enough to get you started:
+
+```elixir
+alias OpenAI.Responses
+
+{:ok, response} = Responses.create("Write me a haiku about Elixir")
+# -> {:ok, %OpenAI.Responses.Response{text: ..., ...}}
+
+IO.puts(response.text)
+```
+
+`create(s) when is_binary(s)` is a shortcut for `create(input: s)`. In general, `create/1` takes a keyword list with anything that [Create a model response](https://platform.openai.com/docs/api-reference/responses/create) supports. `create!/1` is a version of `create/1` that raises on errors:
+
+```elixir
+response =
+  Responses.create!(
+    input: [
+      %{role: :developer, content: "Talk like a pirate."},
+      %{role: :user, content: "Write me a haiku about Elixir"}
+    ],
+    model: "o4-mini",
+    reasoning: %{effort: :low}
+  )
+
+IO.puts("#{response.text}\n\nCost: $#{response.cost.total_cost}")
+```
+
+There is also `create/2` and `create!/2` that take `%Responses.Response{}` as a first argument and keyword list as a second to automatically handle the [conversation state](https://platform.openai.com/docs/guides/conversation-state?api-mode=responses):
+
+```elixir
+Responses.create!(
+  input: [
+    %{role: :developer, content: "Talk like a pirate."},
+    %{role: :user, content: "Write me a haiku about Elixir"}
+  ]
+)
+|> Responses.create!(input: "Which programming language is this haiku about?")
+|> Map.get(:text)
+|> IO.puts()
+```
+
+Notice that the follow-up response also talks like a pirate, as it inherits the model, developer settings, etc. from the initial response.
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Structured Output
+
+One of the coolest features of the latest generation of OpenAI models is their ability to output [Structured Output](https://platform.openai.com/docs/guides/structured-outputs?api-mode=responses) that **precisely matches** the supplied JSON schema. `create/1` accepts a `schema:` option that allows easy creation of such schema in the required format.
+
+The return result will automatically parse the response into `%Response{parsed: object}`.
+
+```elixir
+alias OpenAI.Responses
+
+Responses.create!(
+  input: "List facts about first 3 U.S. Presidents",
+  schema: %{
+    presidents:
+      {:array,
+       %{
+         name: :string,
+         birth_year: :integer,
+         little_known_facts: {:array, {:string, max_items: 2}}
+       }}
+  }
+)
+|> Map.get(:parsed)
+|> Map.get("presidents")
+```
+
+The above example should give you enough to get started, and you can read the documentation about [supported schemas](https://platform.openai.com/docs/guides/structured-outputs#supported-schemas).
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Streaming
+
+Streaming model responses is a great way to increase interactivity of your application. There are two ways to support streaming with `OpenAI.Responses`:
+
+1. By adding a `callback: callback_fn` option to `create/1`. Here `callback_fn/1` takes a map `%{event: type, data: data}` and should return either `:ok` to continue streaming or `{:error, reason}` to stop.
+
+   The call will be blocked until the streaming ends but will otherwise return the same
+   `%Response{}` structure.
+
+2. By calling `stream/1`, which returns an Elixir Stream of `%{event: type, data: data}` objects.
+
+For the supported event types and data format, refer to the [Streaming Responses API](https://platform.openai.com/docs/api-reference/responses-streaming/response) docs.
+
+Here is an example of how this works. We use the `Responses.Stream.text_deltas` helper to transform the stream of events into a stream of text chunks, and use `Kino.Frame` to demonstrate interactive output updates in a Livebook.
+
+```elixir
+alias OpenAI.Responses
+
+frame = Kino.Frame.new()
+Kino.render(frame)
+
+Responses.stream(
+  input: """
+  Write a short fairy tale about an Elixir developer who tried to use Java, 
+  and about the horrors that have ensued.
+  """,
+  temperature: 0.7
+)
+|> Responses.Stream.text_deltas()
+|> Stream.each(fn delta ->
+  Kino.Frame.append(frame, Kino.Markdown.new(delta, chunk: true))
+end)
+|> Stream.run()
+
+:done
+```
+
+There is also a `Responses.Stream.json_events/1` helper, which uses the `Jaxon` library to stream JSON events:
+
+```elixir
+Responses.stream(
+  input: "Tell me about first 2 U.S. Presidents",
+  schema: %{presidents: {:array, %{name: :string, birth_year: :integer}}}
+)
+|> Responses.Stream.json_events()
+|> Stream.each(&IO.inspect/1)
+|> Stream.run()
+```
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Tools
+
+Using OpenAI built-in tools, for example [Web Search](https://platform.openai.com/docs/guides/tools-web-search?api-mode=responses), is simple: just add a `tools:` parameter to `create/1`:
+
+```elixir
+alias OpenAI.Responses
+  
+Responses.create!(
+  input: "Summarize in 3 paragraphs a positive news story from today",
+  tools: [%{type: "web_search_preview"}]
+)
+|> Map.get(:text)
+|> IO.puts
+```
+
+For [Function calling](https://platform.openai.com/docs/guides/function-calling?api-mode=responses), you can provide a function description. The `Responses.Schema.build_function/3` helper makes this easier:
+
+```elixir
+# Using the build_function helper
+weather_tool = Responses.Schema.build_function(
+  "get_weather",
+  "Get current temperature for a given location",
+  %{location: {:string, description: "City and country e.g. Bogotá, Colombia"}}
+)
+
+response = Responses.create!(
+  input: "What is the weather like in Paris today?",
+  tools: [weather_tool]
+)
+
+response.function_calls
+```
+
+The resulting `%Response{}` has a `:function_calls` field populated with the function calls requested by the model. Our app can now call each function, and we can provide results back to the model:
+
+```elixir
+response 
+|> Responses.create!(
+  input: [%{
+    type: "function_call_output",
+    call_id: response.function_calls |> List.first() |> Map.get(:call_id),
+    output: "15C"
+  }]
+) 
+|> Map.get(:text)
+```
+
+### Automating Function Calls with run/2
+
+The `Responses.run/2` function automates the process of handling function calls. It will repeatedly call your functions and feed the results back to the model until a final response is achieved:
+
+```elixir
+# Define available functions
+functions = %{
+  "get_weather" => fn %{"location" => location} ->
+    # In a real app, this would call a weather API
+    case location do
+      "Paris" -> "15°C, partly cloudy"
+      "London" -> "12°C, rainy"
+      "New York" -> "8°C, sunny"
+      _ -> "Weather data not available"
+    end
+  end,
+  "get_time" => fn %{"timezone" => timezone} ->
+    # In a real app, this would get actual time for timezone
+    case timezone do
+      "Europe/Paris" -> "14:30"
+      "Europe/London" -> "13:30" 
+      "America/New_York" -> "08:30"
+      _ -> "Unknown timezone"
+    end
+  end
+}
+
+# Define function tools
+weather_tool = Responses.Schema.build_function(
+  "get_weather",
+  "Get current weather for a location",
+  %{location: {:string, description: "City name"}}
+)
+
+time_tool = Responses.Schema.build_function(
+  "get_time", 
+  "Get current time in a timezone",
+  %{timezone: {:string, description: "Timezone like Europe/Paris"}}
+)
+
+# Run the conversation with automatic function calling
+responses = Responses.run(
+  [
+    input: "What's the weather and time in Paris?",
+    tools: [weather_tool, time_tool]
+  ],
+  functions
+)
+
+# The last response contains the final answer
+responses |> List.last() |> Map.get(:text) |> IO.puts()
+
+# You can also inspect all intermediate responses
+IO.puts("\nTotal responses: #{length(responses)}")
+```
+
+The `run/2` function returns a list of all responses generated during the conversation. This allows you to:
+
+* Track the conversation flow
+* See what functions were called
+* Calculate total costs across all API calls
+* Debug issues in function calling
+
+There's also a `run!/2` variant that raises on errors instead of returning error tuples.

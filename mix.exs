@@ -1,29 +1,36 @@
-defmodule OpenaiResponses.MixProject do
+defmodule OpenAI.Responses.MixProject do
   use Mix.Project
 
   def project do
     [
       app: :openai_responses,
-      version: "0.3.2",
+      version: "0.4.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "Elixir client for OpenAI Responses API",
       package: package(),
-      docs: docs()
+      docs: docs(),
+
+      # Project metadata
+      name: "OpenAI.Responses",
+      source_url: "https://github.com/vkryukov/openai_responses"
     ]
   end
 
+  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger]
     ]
   end
 
+  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
+      {:jaxon, "~> 2.0"},
       {:decimal, "~> 2.0"},
       {:ex_doc, "~> 0.29", only: :dev, runtime: false}
     ]
@@ -33,40 +40,42 @@ defmodule OpenaiResponses.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/vkryukov/openai_responses"},
-      maintainers: ["Victor Kryukov"],
-      description: "Elixir client for OpenAI Responses API"
+      maintainers: ["Victor Kryukov"]
     ]
   end
 
   defp docs do
     [
-      # Set README.md as the default page
+      # Set README.md as the main page
       main: "readme",
-      # Define the structure of documentation
+
+      # Include documentation files
       extras: [
         "README.md",
-        "docs/structured_output.md",
-        "notebooks/tutorial.livemd"
+        "CHANGELOG.md",
+        "tutorial.livemd"
       ],
+
       # Group documentation sections
       groups_for_extras: [
-        Guides: ["README.md", "docs/structured_output.md"],
+        Guides: ["README.md", "CHANGELOG.md"],
         "Interactive Tutorials": ~r/\.livemd$/
       ],
-      # Order of modules in sidebar
+
+      # Organize modules in the sidebar
       groups_for_modules: [
-        "Client API": [
+        "Main API": [
           OpenAI.Responses
         ],
-        "Schema Definition": [
-          OpenAI.Responses.Schema
+        "Response Handling": [
+          OpenAI.Responses.Response
         ],
-        Utilities: [
-          OpenAI.Responses.Stream,
-          OpenAI.Responses.Helpers,
-          OpenAI.Responses.Client,
-          OpenAI.Responses.Config,
-          OpenAI.Responses.Types
+        Streaming: [
+          OpenAI.Responses.Stream
+        ],
+        "Schema & Pricing": [
+          OpenAI.Responses.Schema,
+          OpenAI.Responses.Pricing
         ]
       ]
     ]

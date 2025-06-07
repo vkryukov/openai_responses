@@ -1,9 +1,6 @@
-# Basic Usage
+# OpenAI.Responses
 
-A simple Elixir client for the OpenAI Responses API, built on top of
-[Req](https://github.com/wojtekmach/req).
-
-> **[Interactive LiveBook Tutorial](notebooks/tutorial.livemd)** - Learn how to use this library with interactive examples
+A client library for the OpenAI Responses API with automatic text extraction and cost calculation.
 
 ## Installation
 
@@ -12,7 +9,7 @@ Add `openai_responses` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:openai_responses, "~> 0.3.0"}
+    {:openai_responses, "~> 0.4.0"}
   ]
 end
 ```
@@ -21,172 +18,111 @@ end
 
 Set your OpenAI API key using one of these methods:
 
-```elixir
-# 1. Using environment variable (recommended)
-System.put_env("OPENAI_API_KEY", "your-api-key")
-
-# 2. Passing directly to functions
-OpenAI.Responses.create(model: "gpt-4.1", prompt: "Hello", api_key: "your-api-key")
-
-# 3. Creating a custom client
-client = OpenAI.Responses.Client.new(api_key: "your-api-key")
-OpenAI.Responses.create(model: "gpt-4.1", prompt: "Hello", client: client)
+### Environment Variable
+```bash
+export OPENAI_API_KEY="your-api-key"
 ```
 
-## Basic Usage
-
-### Creating a Simple Response
-
+### Application Config
 ```elixir
-{:ok, response} = OpenAI.Responses.create(model: "gpt-4.1", prompt: "Write a haiku about programming")
-
-# Extract the text output
-text = OpenAI.Responses.Helpers.output_text(response)
-IO.puts(text)
-
-# Check token usage
-token_usage = OpenAI.Responses.Helpers.token_usage(response)
-IO.inspect(token_usage)
+config :openai_responses, :openai_api_key, "your-api-key"
 ```
 
-### Using Tools and Options
+## Getting Started
+
+For a comprehensive tutorial and examples, see the [interactive tutorial](tutorial.livemd) in Livebook.
+
+## Advanced Examples
+
+### Simple terminal chat
 
 ```elixir
-{:ok, response} = OpenAI.Responses.create(
-  model: "gpt-4.1",
-  prompt: "What's the weather like in Paris?",
-  tools: [%{type: "web_search_preview"}],
-  temperature: 0.7
-)
+defmodule Chat do
+  alias OpenAI.Responses
 
-text = OpenAI.Responses.Helpers.output_text(response)
-IO.puts(text)
-```
+  def run do
+    IO.puts("Simple AI Chat (type /exit or /quit to end)")
+    IO.puts("=" |> String.duplicate(40))
 
-### Structured Input
+    loop(nil)
+  end
 
-```elixir
-# Create a structured input with helper function
-input_message = OpenAI.Responses.Helpers.create_input_message(
-  "What is in this image?",
-  "https://example.com/image.jpg"
-)
+  defp loop(previous_response) do
+    input = IO.gets("\nYou: ") |> String.trim()
 
-{:ok, response} = OpenAI.Responses.create(model: "gpt-4.1", input: [input_message])
+    case input do
+      cmd when cmd in ["/exit", "/quit"] ->
+        IO.puts("\nGoodbye!")
 
-# With local images (automatically encoded to Base64)
-input_message = OpenAI.Responses.Helpers.create_input_message(
-  "Describe these images",
-  ["path/to/image1.jpg", "path/to/image2.jpg"],
-  detail: "high"  # Optional detail level
-)
+      _ ->
+        IO.write("\nAI: ")
 
-{:ok, response} = OpenAI.Responses.create(model: "gpt-4.1", input: [input_message])
+        # Use previous response for context, or create new conversation
+        response = if previous_response do
+          # Continue conversation with context
+          Responses.create!(
+            previous_response,
+            input: input,
+            stream: Responses.Stream.delta(&IO.write/1)
+          )
+        else
+            # First message - start new conversation
+            Responses.create!(
+              input: input,
+              stream: Responses.Stream.delta(&IO.write/1)
+            )
+        end
 
-# Or manually create the structured input
-input = [
-  %{
-    "role" => "user",
-    "content" => [
-      %{"type" => "input_text", "text" => "What is in this image?"},
-      %{
-        "type" => "input_image",
-        "image_url" => "https://example.com/image.jpg"
-      }
-    ]
-  }
-]
-
-{:ok, response} = OpenAI.Responses.create(model: "gpt-4.1", input: input)
-```
-
-### Streaming Responses
-
-The library now uses Req's built-in streaming capabilities with the `:into`
-keyword for more reliable streaming.
-
-```elixir
-# Get a stream of events (returns an Enumerable)
-stream = OpenAI.Responses.stream(model: "gpt-4.1", prompt: "Tell me a story")
-
-# Iterate over raw events as they arrive (true streaming)
-stream
-|> Stream.each(&IO.inspect/1)
-|> Stream.run()
-
-# Print text deltas as they arrive (real-time output)
-stream = OpenAI.Responses.stream(model: "gpt-4.1", prompt: "Tell me a story")
-text_stream = OpenAI.Responses.text_deltas(stream)
-
-# This preserves streaming behavior (one chunk at a time)
-text_stream
-|> Stream.each(fn delta ->
-  IO.write(delta)
-end)
-|> Stream.run()
-IO.puts("")   # Add a newline at the end
-
-# Create a typing effect
-stream = OpenAI.Responses.stream(model: "gpt-4.1", prompt: "Tell me a story")
-text_stream = OpenAI.Responses.text_deltas(stream)
-
-text_stream
-|> Stream.each(fn delta ->
-  IO.write(delta)
-  Process.sleep(10)  # Add delay for typing effect
-end)
-|> Stream.run()
-IO.puts("")
-
-# Collect a complete response from a stream
-stream = OpenAI.Responses.stream(model: "gpt-4.1", prompt: "Tell me a story")
-response = OpenAI.Responses.collect_stream(stream)
-
-# Work with the collected response
-text = OpenAI.Responses.Helpers.output_text(response)
-IO.puts(text)
-```
-
-### Other Operations
-
-```elixir
-# Get a specific response by ID
-{:ok, response} = OpenAI.Responses.get("resp_123")
-
-# Delete a response
-{:ok, result} = OpenAI.Responses.delete("resp_123")
-
-# List input items for a response
-{:ok, items} = OpenAI.Responses.list_input_items("resp_123")
-```
-
-## Helper Functions
-
-The `OpenAI.Responses.Helpers` module provides utility functions for working
-with responses:
-
-```elixir
-# Extract text from a response
-text = OpenAI.Responses.Helpers.output_text(response)
-
-# Get token usage information
-usage = OpenAI.Responses.Helpers.token_usage(response)
-
-# Check response status
-status = OpenAI.Responses.Helpers.status(response)
-
-# Check for refusal
-if OpenAI.Responses.Helpers.has_refusal?(response) do
-  refusal_message = OpenAI.Responses.Helpers.refusal_message(response)
-  IO.puts("Request was refused: #{refusal_message}")
+        IO.puts("")  # Add newline after response
+        loop(response)
+    end
+  end
 end
+
+# Run the chat
+Chat.run()
+```
+
+
+### Streaming with Structured Output
+
+```elixir
+# Stream a JSON response with structured output
+Responses.stream(
+  input: "List 3 programming languages with their year of creation",
+  model: "gpt-4o-mini",
+  schema: %{
+    languages: {:array, %{
+      name: :string,
+      year: :integer,
+      paradigm: {:string, description: "Main programming paradigm"}
+    }}
+  }
+)
+|> Responses.Stream.json_events()
+|> Enum.each(&IO.puts/1)
+```
+
+### Cost Tracking with High Precision
+
+```elixir
+{:ok, response} = Responses.create("Explain quantum computing")
+
+# All cost values are Decimal for precision
+IO.inspect(response.cost)
+# => %{
+#      input_cost: #Decimal<0.0004>,
+#      output_cost: #Decimal<0.0008>,
+#      total_cost: #Decimal<0.0012>,
+#      cached_discount: #Decimal<0>
+#    }
+
+# Convert to float if needed
+total_in_cents = response.cost.total_cost |> Decimal.mult(100) |> Decimal.to_float()
 ```
 
 ## Documentation
 
-For more detailed documentation, run `mix docs` to generate full API
-documentation.
-
-## License
-
-MIT
+- [API Documentation](https://hexdocs.pm/openai_responses)
+- [Interactive Tutorial](tutorial.livemd)
+- [GitHub Repository](https://github.com/vkryukov/openai-responses)
