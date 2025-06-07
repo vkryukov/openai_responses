@@ -67,13 +67,9 @@ defmodule OpenAI.Responses.MixProject do
         "Main API": [
           OpenAI.Responses
         ],
-        "Response Handling": [
-          OpenAI.Responses.Response
-        ],
-        Streaming: [
-          OpenAI.Responses.Stream
-        ],
-        "Schema & Pricing": [
+        "Supporting Modules": [
+          OpenAI.Responses.Response,
+          OpenAI.Responses.Stream,
           OpenAI.Responses.Schema,
           OpenAI.Responses.Pricing
         ]
