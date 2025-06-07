@@ -245,48 +245,6 @@ defmodule OpenAI.Responses.Stream do
   end
 
   @doc """
-  Prints every unique event type received from the stream.
-
-  This helper function will output each event type once, skipping consecutive
-  duplicate events. It's useful for debugging and understanding the sequence
-  of events in a stream.
-
-  ## Examples
-
-      # Print all unique event types as they occur
-      Responses.Stream.stream_with_callback(
-        Responses.Stream.print_unique_events(),
-        input: "Hello, world!"
-      )
-
-      # Use with stream
-      Responses.stream(input: "Tell me a story")
-      |> Enum.each(Responses.Stream.print_unique_events())
-  """
-  def print_unique_events do
-    {:ok, agent} = Agent.start_link(fn -> nil end)
-
-    fn
-      {:ok, %{event: event}} ->
-        last_event = Agent.get(agent, & &1)
-
-        if event != last_event do
-          IO.puts("Event: #{event}")
-          Agent.update(agent, fn _ -> event end)
-        end
-
-        :ok
-
-      {:error, reason} ->
-        IO.puts("Error: #{inspect(reason)}")
-        :ok
-
-      _ ->
-        :ok
-    end
-  end
-
-  @doc """
   Extracts text deltas from a stream, ignoring errors and other event types.
 
   This helper transforms a raw event stream into a text-only stream by filtering
