@@ -235,7 +235,114 @@ defmodule OpenAI.Responses.SchemaTest do
     end
   end
 
+  describe "build_output/1 with string key pairs" do
+    test "converts simple types with string keys instead of atoms" do
+      # This simulates data that might come from a database where keys are strings
+      result =
+        Schema.build_output([
+          {"name", :string},
+          {"age", :number},
+          {"active", :boolean}
+        ])
+
+      assert result == %{
+               "name" => "data",
+               "type" => "json_schema",
+               "strict" => true,
+               "schema" => %{
+                 "type" => "object",
+                 "properties" => %{
+                   "name" => %{"type" => "string"},
+                   "age" => %{"type" => "number"},
+                   "active" => %{"type" => "boolean"}
+                 },
+                 "additionalProperties" => false,
+                 "required" => ["name", "age", "active"]
+               }
+             }
+    end
+
+    test "converts nested objects with string keys" do
+      result =
+        Schema.build_output([
+          {"user",
+           [
+             {"name", :string},
+             {"contact",
+              [
+                {"email", {:string, format: "email"}},
+                {"phone", :string}
+              ]}
+           ]}
+        ])
+
+      assert result["schema"]["properties"]["user"] == %{
+               "type" => "object",
+               "properties" => %{
+                 "name" => %{"type" => "string"},
+                 "contact" => %{
+                   "type" => "object",
+                   "properties" => %{
+                     "email" => %{"type" => "string", "format" => "email"},
+                     "phone" => %{"type" => "string"}
+                   },
+                   "additionalProperties" => false,
+                   "required" => ["email", "phone"]
+                 }
+               },
+               "additionalProperties" => false,
+               "required" => ["name", "contact"]
+             }
+    end
+
+    test "converts array types with string keys" do
+      result =
+        Schema.build_output([
+          {"tags", {:array, :string}},
+          {"scores", {"array", :number}}
+        ])
+
+      assert result["schema"]["properties"]["tags"] == %{
+               "type" => "array",
+               "items" => %{"type" => "string"}
+             }
+
+      assert result["schema"]["properties"]["scores"] == %{
+               "type" => "array",
+               "items" => %{"type" => "number"}
+             }
+    end
+  end
+
   describe "build_function/3" do
+    test "creates function schema with string key parameters" do
+      # Test that build_function also works with string keys
+      result =
+        Schema.build_function("get_user", "Get user information", [
+          {"user_id", {:string, description: "The ID of the user"}},
+          {"include_profile", :boolean}
+        ])
+
+      assert result == %{
+               "type" => "function",
+               "name" => "get_user",
+               "strict" => true,
+               "description" => "Get user information",
+               "parameters" => %{
+                 "type" => "object",
+                 "properties" => %{
+                   "user_id" => %{
+                     "type" => "string",
+                     "description" => "The ID of the user"
+                   },
+                   "include_profile" => %{"type" => "boolean"}
+                 },
+                 "additionalProperties" => false,
+                 "required" => ["user_id", "include_profile"]
+               }
+             }
+    end
+
     test "creates function schema with simple parameters" do
       result =
         Schema.build_function("get_weather", "Get current temperature for a given location.", %{

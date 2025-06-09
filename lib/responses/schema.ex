@@ -151,10 +151,10 @@ defmodule OpenAI.Responses.Schema do
       |> Enum.map(fn {name, spec} -> {to_string(name), build_property(spec)} end)
       |> Map.new()
 
+    # Extract keys from the list, handling both atom and string keys
     required =
       object_spec
-      |> Keyword.keys()
-      |> Enum.map(&to_string/1)
+      |> Enum.map(fn {key, _value} -> to_string(key) end)
 
     %{
       "type" => "object",

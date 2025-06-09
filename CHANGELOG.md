@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Support for string tuple syntax in Schema arrays** - `Schema.build_property/1` now accepts `{"array", item_type}` in addition to `{:array, item_type}` for defining array types in schemas
+- **Support for string keys in Schema definitions** - `Schema.build_output/1` and `Schema.build_function/3` now accept lists with string keys in addition to keyword lists with atom keys. This enables schemas to be stored in databases or other persistence layers where atoms are converted to strings, and then reused without conversion back to atoms
 
 ## 0.4.0
 
