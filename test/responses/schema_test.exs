@@ -110,6 +110,49 @@ defmodule OpenAI.Responses.SchemaTest do
              }
     end
 
+    test "converts array types with string tuple syntax" do
+      result =
+        Schema.build_output(%{
+          tags: {"array", :string},
+          scores: {"array", :number}
+        })
+
+      assert result["schema"]["properties"]["tags"] == %{
+               "type" => "array",
+               "items" => %{"type" => "string"}
+             }
+
+      assert result["schema"]["properties"]["scores"] == %{
+               "type" => "array",
+               "items" => %{"type" => "number"}
+             }
+    end
+
+    test "converts array of objects with string tuple syntax" do
+      result =
+        Schema.build_output(%{
+          users:
+            {"array",
+             %{
+               name: :string,
+               email: {:string, format: "email"}
+             }}
+        })
+
+      assert result["schema"]["properties"]["users"] == %{
+               "type" => "array",
+               "items" => %{
+                 "type" => "object",
+                 "properties" => %{
+                   "name" => %{"type" => "string"},
+                   "email" => %{"type" => "string", "format" => "email"}
+                 },
+                 "additionalProperties" => false,
+                 "required" => ["email", "name"]
+               }
+             }
+    end
+
     test "converts nested objects" do
       result =
         Schema.build_output(%{
@@ -249,6 +292,32 @@ defmodule OpenAI.Responses.SchemaTest do
 
       assert result["parameters"]["properties"]["profile"]["properties"]["bio"]["description"] ==
                "User biography"
+    end
+
+    test "creates function schema with string tuple array syntax" do
+      result =
+        Schema.build_function("process_data", "Process data arrays", %{
+          items: {"array", :string},
+          metadata: {"array", %{key: :string, value: :string}}
+        })
+
+      assert result["parameters"]["properties"]["items"] == %{
+               "type" => "array",
+               "items" => %{"type" => "string"}
+             }
+
+      assert result["parameters"]["properties"]["metadata"] == %{
+               "type" => "array",
+               "items" => %{
+                 "type" => "object",
+                 "properties" => %{
+                   "key" => %{"type" => "string"},
+                   "value" => %{"type" => "string"}
+                 },
+                 "additionalProperties" => false,
+                 "required" => ["key", "value"]
+               }
+             }
     end
   end
 end

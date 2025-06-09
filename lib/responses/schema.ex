@@ -130,6 +130,13 @@ defmodule OpenAI.Responses.Schema do
     }
   end
 
+  defp build_property({"array", item_type}) do
+    %{
+      "type" => "array",
+      "items" => build_property(item_type)
+    }
+  end
+
   defp build_property({type, opts}) when (is_atom(type) or is_binary(type)) and is_list(opts) do
     base = %{"type" => to_string(type)}
 
