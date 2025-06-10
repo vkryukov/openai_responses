@@ -3,10 +3,20 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## 0.4.2
+
+### Added
+- **List format support for Schema definitions** - `Schema.build_output/1` and `Schema.build_function/3` now accept list syntax `[type, options]` in addition to tuple syntax `{type, options}`. This provides more flexibility when defining schemas:
+  - `[:string, %{description: "Full name"}]` - list with map options
+  - `[:string, [description: "Full name"]]` - list with keyword list options
+  - `[:array, :string]` - list format for arrays
+  - All formats can be mixed within the same schema definition
+- Pricing for o3 pro model
 
 ### Changed
 - **Cost calculation for unknown models** - When pricing data is not available for a model, `Response.calculate_cost/1` now returns zero costs for all categories instead of `nil`. This provides a consistent cost structure regardless of whether the model has pricing information.
+- **Schema internals refactored** - The schema building logic now uses a two-phase approach (normalize then build) making it more maintainable and extensible. This is an internal change that doesn't affect the public API.
+- Pricing for o3 model updated to reflect 80% price decrease
 
 ## 0.4.1
 
