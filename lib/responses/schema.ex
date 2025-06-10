@@ -115,62 +115,123 @@ defmodule OpenAI.Responses.Schema do
     build_property(fields)
   end
 
-  defp build_property(type) when is_binary(type) do
-    %{"type" => type}
+  defp build_property(spec) do
+    spec
+    |> normalize_spec()
+    |> build_from_normalized()
   end
 
-  defp build_property(type) when is_atom(type) do
-    %{"type" => to_string(type)}
+  # Normalize various input formats to a standard map format
+  defp normalize_spec(spec) do
+    case spec do
+      # Simple types
+      type when is_atom(type) or is_binary(type) ->
+        %{"type" => to_string(type)}
+
+      # Arrays - both {:array, ...} and {"array", ...}
+      {array_type, item_spec} when array_type in [:array, "array"] ->
+        %{"type" => "array", "items" => normalize_spec(item_spec)}
+
+      # Arrays in list format - [:array, item_spec]
+      [array_type, item_spec] when array_type in [:array, "array"] ->
+        %{"type" => "array", "items" => normalize_spec(item_spec)}
+
+      # Lists with exactly 2 elements - treat as [type, options]
+      [type, opts] when (is_atom(type) or is_binary(type)) and (is_list(opts) or is_map(opts)) ->
+        if type in [:object, "object"] and is_map(opts) and Map.has_key?(opts, :properties) do
+          # Special case for [:object, %{properties: ...}]
+          properties = Map.get(opts, :properties)
+          normalize_object_spec(Enum.to_list(properties))
+        else
+          normalize_type_with_options(type, opts)
+        end
+
+      # Tuples with type and options
+      {type, opts} when (is_atom(type) or is_binary(type)) and is_list(opts) ->
+        if type in [:object, "object"] and Keyword.has_key?(opts, :properties) do
+          # Special case for {:object, properties: ...}
+          properties = Keyword.get(opts, :properties)
+          normalize_object_spec(Enum.to_list(properties))
+        else
+          normalize_type_with_options(type, opts)
+        end
+
+      # Object specifications - keyword lists or lists of tuples
+      list when is_list(list) and list != [] and is_tuple(hd(list)) ->
+        normalize_object_spec(list)
+        
+      # Empty list
+      [] ->
+        normalize_object_spec([])
+
+      # Maps are object specifications
+      map when is_map(map) ->
+        # Convert to sorted keyword list for consistent ordering
+        map
+        |> Enum.sort_by(fn {key, _} -> to_string(key) end)
+        |> normalize_object_spec()
+
+      # Fallback for edge cases
+      _ ->
+        raise ArgumentError, "Unsupported schema specification: #{inspect(spec)}"
+    end
   end
 
-  defp build_property({:array, item_type}) do
-    %{
-      "type" => "array",
-      "items" => build_property(item_type)
-    }
-  end
-
-  defp build_property({"array", item_type}) do
-    %{
-      "type" => "array",
-      "items" => build_property(item_type)
-    }
-  end
-
-  defp build_property({type, opts}) when (is_atom(type) or is_binary(type)) and is_list(opts) do
+  defp normalize_type_with_options(type, opts) do
     base = %{"type" => to_string(type)}
-
-    Enum.reduce(opts, base, fn {key, value}, acc ->
+    
+    # Convert options to map if they're a keyword list
+    opts_map = if is_list(opts), do: Map.new(opts), else: opts
+    
+    # Merge options into base, converting keys to strings
+    Enum.reduce(opts_map, base, fn {key, value}, acc ->
       Map.put(acc, to_string(key), value)
     end)
   end
 
-  defp build_property(object_spec) when is_list(object_spec) do
+  defp normalize_object_spec(spec) do
     properties =
-      object_spec
-      |> Enum.map(fn {name, spec} -> {to_string(name), build_property(spec)} end)
+      spec
+      |> Enum.map(fn {name, child_spec} -> 
+        {to_string(name), normalize_spec(child_spec)}
+      end)
       |> Map.new()
 
-    # Extract keys from the list, handling both atom and string keys
     required =
-      object_spec
-      |> Enum.map(fn {key, _value} -> to_string(key) end)
+      spec
+      |> Enum.map(fn {key, _} -> to_string(key) end)
 
     %{
       "type" => "object",
       "properties" => properties,
+      "required" => required
+    }
+  end
+
+  # Build the final property from normalized format
+  defp build_from_normalized(%{"type" => "array", "items" => items}) do
+    %{
+      "type" => "array",
+      "items" => build_from_normalized(items)
+    }
+  end
+
+  defp build_from_normalized(%{"type" => "object", "properties" => properties, "required" => required}) do
+    built_properties =
+      properties
+      |> Enum.map(fn {name, prop} -> {name, build_from_normalized(prop)} end)
+      |> Map.new()
+
+    %{
+      "type" => "object",
+      "properties" => built_properties,
       "additionalProperties" => false,
       "required" => required
     }
   end
 
-  defp build_property(object_spec) when is_map(object_spec) do
-    # Convert map to keyword list and delegate to preserve consistent behavior
-    # but sort the keys since maps don't have guaranteed order
-    keyword_list =
-      object_spec
-      |> Enum.sort_by(fn {key, _} -> to_string(key) end)
-
-    build_property(keyword_list)
+  defp build_from_normalized(spec) when is_map(spec) do
+    # Already in final format
+    spec
   end
 end

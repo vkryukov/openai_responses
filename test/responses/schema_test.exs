@@ -314,6 +314,125 @@ defmodule OpenAI.Responses.SchemaTest do
     end
   end
 
+  describe "build_output/1 with list format" do
+    test "converts types with list format [type, map]" do
+      result =
+        Schema.build_output(%{
+          name: [:string, %{description: "Full name"}],
+          year: [:integer, %{description: "Year of birth"}]
+        })
+
+      assert result == %{
+               "name" => "data",
+               "type" => "json_schema",
+               "strict" => true,
+               "schema" => %{
+                 "type" => "object",
+                 "properties" => %{
+                   "name" => %{
+                     "type" => "string",
+                     "description" => "Full name"
+                   },
+                   "year" => %{
+                     "type" => "integer",
+                     "description" => "Year of birth"
+                   }
+                 },
+                 "additionalProperties" => false,
+                 "required" => ["name", "year"]
+               }
+             }
+    end
+
+    test "converts types with list format including pattern and format" do
+      result =
+        Schema.build_output(%{
+          username: [:string, %{description: "Username", pattern: "^@[a-zA-Z0-9_]+$"}],
+          email: [:string, %{description: "Email address", format: "email"}]
+        })
+
+      assert result["schema"]["properties"]["username"] == %{
+               "type" => "string",
+               "description" => "Username",
+               "pattern" => "^@[a-zA-Z0-9_]+$"
+             }
+
+      assert result["schema"]["properties"]["email"] == %{
+               "type" => "string",
+               "description" => "Email address",
+               "format" => "email"
+             }
+    end
+
+    test "mixes list format with tuple format" do
+      result =
+        Schema.build_output(%{
+          name: [:string, %{description: "Name using list format"}],
+          age: {:number, description: "Age using tuple format"},
+          active: :boolean
+        })
+
+      assert result["schema"]["properties"]["name"] == %{
+               "type" => "string",
+               "description" => "Name using list format"
+             }
+
+      assert result["schema"]["properties"]["age"] == %{
+               "type" => "number",
+               "description" => "Age using tuple format"
+             }
+
+      assert result["schema"]["properties"]["active"] == %{
+               "type" => "boolean"
+             }
+    end
+
+    test "supports list format with keyword list options" do
+      result =
+        Schema.build_output(%{
+          name: [:string, [description: "Full name", minLength: 2]],
+          email: [:string, [format: "email", description: "Email address"]]
+        })
+
+      assert result["schema"]["properties"]["name"] == %{
+               "type" => "string",
+               "description" => "Full name",
+               "minLength" => 2
+             }
+
+      assert result["schema"]["properties"]["email"] == %{
+               "type" => "string",
+               "format" => "email",
+               "description" => "Email address"
+             }
+    end
+
+    test "supports deeply nested mixed formats" do
+      result =
+        Schema.build_output(%{
+          user: [
+            :object,
+            %{
+              properties: %{
+                name: [:string, [description: "User name"]],
+                profile: {:object, properties: %{bio: :string, age: [:integer, %{minimum: 0}]}}
+              }
+            }
+          ]
+        })
+
+      assert get_in(result, ["schema", "properties", "user", "properties", "name"]) == %{
+               "type" => "string",
+               "description" => "User name"
+             }
+
+      assert get_in(result, ["schema", "properties", "user", "properties", "profile", "properties", "age"]) == %{
+               "type" => "integer",
+               "minimum" => 0
+             }
+    end
+  end
+
   describe "build_function/3" do
     test "creates function schema with string key parameters" do
       # Test that build_function also works with string keys
