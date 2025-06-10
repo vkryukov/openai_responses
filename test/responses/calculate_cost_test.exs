@@ -142,7 +142,13 @@ defmodule OpenAI.Responses.CalculateCostTest do
       }
 
       result = Response.calculate_cost(response)
-      assert result.cost == nil
+      
+      assert_cost_equals(result.cost, %{
+        input_cost: "0",
+        output_cost: "0",
+        total_cost: "0",
+        cached_discount: "0"
+      })
     end
 
     test "handles missing model information" do
@@ -156,7 +162,13 @@ defmodule OpenAI.Responses.CalculateCostTest do
       }
 
       result = Response.calculate_cost(response)
-      assert result.cost == nil
+      
+      assert_cost_equals(result.cost, %{
+        input_cost: "0",
+        output_cost: "0",
+        total_cost: "0",
+        cached_discount: "0"
+      })
     end
 
     test "handles unknown model" do
@@ -171,7 +183,13 @@ defmodule OpenAI.Responses.CalculateCostTest do
       }
 
       result = Response.calculate_cost(response)
-      assert result.cost == nil
+      
+      assert_cost_equals(result.cost, %{
+        input_cost: "0",
+        output_cost: "0",
+        total_cost: "0",
+        cached_discount: "0"
+      })
     end
 
     test "handles missing input_tokens_details" do
@@ -266,6 +284,29 @@ defmodule OpenAI.Responses.CalculateCostTest do
         output_cost: "2.0",
         total_cost: "2.7",
         cached_discount: "0.3"
+      })
+    end
+
+    test "returns zero costs for model without pricing data" do
+      response = %Response{
+        body: %{
+          "model" => "some-new-model-without-pricing",
+          "usage" => %{
+            "input_tokens" => 5000,
+            "output_tokens" => 3000,
+            "input_tokens_details" => %{"cached_tokens" => 1000}
+          }
+        }
+      }
+
+      result = Response.calculate_cost(response)
+
+      # Even with usage data, if pricing is not available, return zero costs
+      assert_cost_equals(result.cost, %{
+        input_cost: "0",
+        output_cost: "0",
+        total_cost: "0",
+        cached_discount: "0"
       })
     end
   end

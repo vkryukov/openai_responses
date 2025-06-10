@@ -124,7 +124,7 @@ defmodule OpenAI.Responses.Response do
   - `cached_discount`: Amount saved from cached tokens in USD (as Decimal) (if applicable)
 
   If pricing information is not available for the model, or usage information
-  is missing, the cost field will be set to nil.
+  is missing, the cost field will be set to zero for all cost categories.
   """
   def calculate_cost(response) do
     case get_cost_params(response.body) do
@@ -133,7 +133,13 @@ defmodule OpenAI.Responses.Response do
         %{response | cost: cost}
 
       :error ->
-        %{response | cost: nil}
+        # Return zero costs when pricing is not available
+        %{response | cost: %{
+          input_cost: Decimal.new(0),
+          output_cost: Decimal.new(0),
+          total_cost: Decimal.new(0),
+          cached_discount: Decimal.new(0)
+        }}
     end
   end
 

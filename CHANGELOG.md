@@ -3,6 +3,11 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Cost calculation for unknown models** - When pricing data is not available for a model, `Response.calculate_cost/1` now returns zero costs for all categories instead of `nil`. This provides a consistent cost structure regardless of whether the model has pricing information.
+
 ## 0.4.1
 
 ### Added
