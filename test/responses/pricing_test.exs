@@ -10,9 +10,9 @@ defmodule OpenAI.Responses.PricingTest do
       assert Decimal.equal?(pricing1.output, Decimal.new("1.60"))
 
       pricing2 = Pricing.get_pricing("o3-2025-04-16")
-      assert Decimal.equal?(pricing2.input, Decimal.new("10.00"))
-      assert Decimal.equal?(pricing2.cached_input, Decimal.new("2.50"))
-      assert Decimal.equal?(pricing2.output, Decimal.new("40.00"))
+      assert Decimal.equal?(pricing2.input, Decimal.new("2.00"))
+      assert Decimal.equal?(pricing2.cached_input, Decimal.new("0.50"))
+      assert Decimal.equal?(pricing2.output, Decimal.new("8.00"))
 
       pricing3 = Pricing.get_pricing("o1-pro-2025-03-19")
       assert Decimal.equal?(pricing3.input, Decimal.new("150.00"))

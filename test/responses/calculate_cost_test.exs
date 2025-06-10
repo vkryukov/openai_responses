@@ -142,7 +142,7 @@ defmodule OpenAI.Responses.CalculateCostTest do
       }
 
       result = Response.calculate_cost(response)
-      
+
       assert_cost_equals(result.cost, %{
         input_cost: "0",
         output_cost: "0",
@@ -162,7 +162,7 @@ defmodule OpenAI.Responses.CalculateCostTest do
       }
 
       result = Response.calculate_cost(response)
-      
+
       assert_cost_equals(result.cost, %{
         input_cost: "0",
         output_cost: "0",
@@ -183,7 +183,7 @@ defmodule OpenAI.Responses.CalculateCostTest do
       }
 
       result = Response.calculate_cost(response)
-      
+
       assert_cost_equals(result.cost, %{
         input_cost: "0",
         output_cost: "0",
@@ -280,10 +280,10 @@ defmodule OpenAI.Responses.CalculateCostTest do
       # cached discount = 40000 * (10.00 - 2.50) / 1000000 = 0.3
       assert_cost_equals(result.cost, %{
         # 0.6 + 0.1
-        input_cost: "0.7",
-        output_cost: "2.0",
-        total_cost: "2.7",
-        cached_discount: "0.3"
+        input_cost: "0.140",
+        output_cost: "0.400",
+        total_cost: "0.540",
+        cached_discount: "0.060"
       })
     end
 
