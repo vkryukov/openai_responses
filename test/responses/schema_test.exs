@@ -546,4 +546,192 @@ defmodule OpenAI.Responses.SchemaTest do
              }
     end
   end
+
+  describe "build_output/1 with anyOf" do
+    test "converts simple anyOf union types" do
+      result =
+        Schema.build_output(%{
+          value: {:anyOf, [:string, :number]}
+        })
+
+      assert result["schema"]["properties"]["value"] == %{
+               "anyOf" => [
+                 %{"type" => "string"},
+                 %{"type" => "number"}
+               ]
+             }
+    end
+
+    test "converts anyOf with complex types" do
+      result =
+        Schema.build_output(%{
+          item: {:anyOf, [
+            %{
+              name: {:string, description: "The name of the user"},
+              age: {:number, description: "The age of the user"}
+            },
+            %{
+              number: {:string, description: "The number of the address. Eg. for 123 main st, this would be 123"},
+              street: {:string, description: "The street name. Eg. for 123 main st, this would be main st"},
+              city: {:string, description: "The city of the address"}
+            }
+          ]}
+        })
+
+      assert result["schema"]["properties"]["item"] == %{
+               "anyOf" => [
+                 %{
+                   "type" => "object",
+                   "properties" => %{
+                     "name" => %{
+                       "type" => "string",
+                       "description" => "The name of the user"
+                     },
+                     "age" => %{
+                       "type" => "number",
+                       "description" => "The age of the user"
+                     }
+                   },
+                   "additionalProperties" => false,
+                   "required" => ["age", "name"]
+                 },
+                 %{
+                   "type" => "object",
+                   "properties" => %{
+                     "number" => %{
+                       "type" => "string",
+                       "description" => "The number of the address. Eg. for 123 main st, this would be 123"
+                     },
+                     "street" => %{
+                       "type" => "string",
+                       "description" => "The street name. Eg. for 123 main st, this would be main st"
+                     },
+                     "city" => %{
+                       "type" => "string",
+                       "description" => "The city of the address"
+                     }
+                   },
+                   "additionalProperties" => false,
+                   "required" => ["city", "number", "street"]
+                 }
+               ]
+             }
+    end
+
+    test "converts anyOf with array types" do
+      result =
+        Schema.build_output(%{
+          data: {:anyOf, [
+            :string,
+            {:array, :string},
+            {:array, %{id: :number, name: :string}}
+          ]}
+        })
+
+      assert result["schema"]["properties"]["data"] == %{
+               "anyOf" => [
+                 %{"type" => "string"},
+                 %{
+                   "type" => "array",
+                   "items" => %{"type" => "string"}
+                 },
+                 %{
+                   "type" => "array",
+                   "items" => %{
+                     "type" => "object",
+                     "properties" => %{
+                       "id" => %{"type" => "number"},
+                       "name" => %{"type" => "string"}
+                     },
+                     "additionalProperties" => false,
+                     "required" => ["id", "name"]
+                   }
+                 }
+               ]
+             }
+    end
+
+    test "converts anyOf using list syntax" do
+      result =
+        Schema.build_output(%{
+          value: [:anyOf, [:string, :number, :boolean]]
+        })
+
+      assert result["schema"]["properties"]["value"] == %{
+               "anyOf" => [
+                 %{"type" => "string"},
+                 %{"type" => "number"},
+                 %{"type" => "boolean"}
+               ]
+             }
+    end
+
+    test "converts anyOf with string syntax" do
+      result =
+        Schema.build_output(%{
+          value: {"anyOf", [:string, :number]}
+        })
+
+      assert result["schema"]["properties"]["value"] == %{
+               "anyOf" => [
+                 %{"type" => "string"},
+                 %{"type" => "number"}
+               ]
+             }
+    end
+
+    test "converts nested anyOf" do
+      result =
+        Schema.build_output(%{
+          complex: {:anyOf, [
+            :null,
+            {:anyOf, [:string, :number]},
+            %{type: :string, value: {:anyOf, [:number, :boolean]}}
+          ]}
+        })
+
+      assert result["schema"]["properties"]["complex"] == %{
+               "anyOf" => [
+                 %{"type" => "null"},
+                 %{
+                   "anyOf" => [
+                     %{"type" => "string"},
+                     %{"type" => "number"}
+                   ]
+                 },
+                 %{
+                   "type" => "object",
+                   "properties" => %{
+                     "type" => %{"type" => "string"},
+                     "value" => %{
+                       "anyOf" => [
+                         %{"type" => "number"},
+                         %{"type" => "boolean"}
+                       ]
+                     }
+                   },
+                   "additionalProperties" => false,
+                   "required" => ["type", "value"]
+                 }
+               ]
+             }
+    end
+  end
+
+  describe "build_function/3 with anyOf" do
+    test "creates function schema with anyOf parameters" do
+      result =
+        Schema.build_function("process_value", "Process a value that can be string or number", %{
+          input: {:anyOf, [:string, :number]},
+          output_format: {:string, enum: ["json", "text"]}
+        })
+
+      assert result["parameters"]["properties"]["input"] == %{
+               "anyOf" => [
+                 %{"type" => "string"},
+                 %{"type" => "number"}
+               ]
+             }
+    end
+  end
 end

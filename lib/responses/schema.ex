@@ -136,6 +136,14 @@ defmodule OpenAI.Responses.Schema do
       [array_type, item_spec] when array_type in [:array, "array"] ->
         %{"type" => "array", "items" => normalize_spec(item_spec)}
 
+      # anyOf - union types
+      {anyof_type, specs} when anyof_type in [:anyOf, "anyOf"] and is_list(specs) ->
+        %{"anyOf" => Enum.map(specs, &normalize_spec/1)}
+
+      # anyOf in list format - [:anyOf, [specs...]]
+      [anyof_type, specs] when anyof_type in [:anyOf, "anyOf"] and is_list(specs) ->
+        %{"anyOf" => Enum.map(specs, &normalize_spec/1)}
+
       # Lists with exactly 2 elements - treat as [type, options]
       [type, opts] when (is_atom(type) or is_binary(type)) and (is_list(opts) or is_map(opts)) ->
         if type in [:object, "object"] and is_map(opts) and Map.has_key?(opts, :properties) do
@@ -213,6 +221,12 @@ defmodule OpenAI.Responses.Schema do
     %{
       "type" => "array",
       "items" => build_from_normalized(items)
+    }
+  end
+
+  defp build_from_normalized(%{"anyOf" => specs}) do
+    %{
+      "anyOf" => Enum.map(specs, &build_from_normalized/1)
     }
   end
 
