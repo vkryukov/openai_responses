@@ -40,7 +40,9 @@ defmodule OpenAI.Responses.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/vkryukov/openai_responses"},
-      maintainers: ["Victor Kryukov"]
+      maintainers: ["Victor Kryukov"],
+      files: ~w(lib priv .formatter.exs mix.exs README* readme* LICENSE*
+                      license* CHANGELOG* changelog* src usage-rules.md)
     ]
   end
 
