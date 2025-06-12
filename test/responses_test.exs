@@ -66,6 +66,46 @@ defmodule OpenAI.ResponsesTest do
     assert follow_up_response.text =~ ~r/Elixir/
   end
 
+  @tag :api
+  test "create/2 preserves model from previous response when not explicitly provided" do
+    # Create initial response with a specific model
+    initial_response =
+      Responses.create!(
+        input: "Say hello",
+        model: "gpt-4.1"
+      )
+
+    # Verify the initial response uses the specified model
+    assert initial_response.body["model"] =~ ~r/gpt-4.1/
+
+    # Create follow-up without specifying model
+    follow_up_response = Responses.create!(initial_response, input: "Say goodbye")
+
+    # The follow-up should use the same model as the initial response
+    assert follow_up_response.body["model"] =~ ~r/gpt-4.1/
+  end
+
+  @tag :api
+  test "create/2 allows overriding model from previous response" do
+    # Create initial response with a specific model
+    initial_response =
+      Responses.create!(
+        input: "Say hello",
+        model: "gpt-4.1"
+      )
+
+    # Create follow-up with a different model
+    follow_up_response =
+      Responses.create!(
+        initial_response,
+        input: "Say goodbye",
+        model: "gpt-4.1-nano"
+      )
+
+    # The follow-up should use the explicitly provided model
+    assert follow_up_response.body["model"] =~ ~r/gpt-4.1-nano/
+  end
+
   describe "create with schema option" do
     @tag :api
     test "create with schema option generates structured response with map schema" do
@@ -190,39 +230,42 @@ defmodule OpenAI.ResponsesTest do
       }
 
       # Define function tools
-      time_tool = Responses.Schema.build_function(
-        "get_current_time",
-        "Get the current time",
-        %{}
-      )
+      time_tool =
+        Responses.Schema.build_function(
+          "get_current_time",
+          "Get the current time",
+          %{}
+        )
 
-      add_tool = Responses.Schema.build_function(
-        "add_numbers",
-        "Add two numbers together",
-        %{a: :number, b: :number}
-      )
+      add_tool =
+        Responses.Schema.build_function(
+          "add_numbers",
+          "Add two numbers together",
+          %{a: :number, b: :number}
+        )
 
       # Run the conversation
-      responses = Responses.run(
-        [
-          input: "What time is it and what is 15 + 27?",
-          tools: [time_tool, add_tool]
-        ],
-        functions
-      )
+      responses =
+        Responses.run(
+          [
+            input: "What time is it and what is 15 + 27?",
+            tools: [time_tool, add_tool]
+          ],
+          functions
+        )
 
       # Should have at least 2 responses (initial + final)
       assert length(responses) >= 2
-      
+
       # First response should have function calls
       first_response = List.first(responses)
       assert first_response.function_calls != nil
       assert length(first_response.function_calls) > 0
-      
+
       # Last response should have no function calls
       last_response = List.last(responses)
       assert last_response.function_calls == nil || last_response.function_calls == []
-      
+
       # Final text should contain the results
       assert last_response.text =~ "42"
       assert last_response.text =~ "10:30"
@@ -238,30 +281,33 @@ defmodule OpenAI.ResponsesTest do
       }
 
       # Define tools including one that doesn't have an implementation
-      weather_tool = Responses.Schema.build_function(
-        "get_weather",
-        "Get weather for a location",
-        %{location: :string}
-      )
+      weather_tool =
+        Responses.Schema.build_function(
+          "get_weather",
+          "Get weather for a location",
+          %{location: :string}
+        )
 
-      time_tool = Responses.Schema.build_function(
-        "get_time",
-        "Get current time",
-        %{}
-      )
+      time_tool =
+        Responses.Schema.build_function(
+          "get_time",
+          "Get current time",
+          %{}
+        )
 
-      responses = Responses.run(
-        [
-          input: "What's the weather in Paris and what time is it?",
-          tools: [weather_tool, time_tool]
-        ],
-        functions
-      )
+      responses =
+        Responses.run(
+          [
+            input: "What's the weather in Paris and what time is it?",
+            tools: [weather_tool, time_tool]
+          ],
+          functions
+        )
 
       # Should complete successfully
       assert is_list(responses)
       assert length(responses) >= 2
-      
+
       # Final response should mention the error or handle it gracefully
       last_response = List.last(responses)
       assert last_response.text != nil
@@ -275,19 +321,21 @@ defmodule OpenAI.ResponsesTest do
         end
       ]
 
-      weather_tool = Responses.Schema.build_function(
-        "get_weather",
-        "Get weather",
-        %{location: :string}
-      )
+      weather_tool =
+        Responses.Schema.build_function(
+          "get_weather",
+          "Get weather",
+          %{location: :string}
+        )
 
-      responses = Responses.run(
-        [
-          input: "What's the weather in London?",
-          tools: [weather_tool]
-        ],
-        functions
-      )
+      responses =
+        Responses.run(
+          [
+            input: "What's the weather in London?",
+            tools: [weather_tool]
+          ],
+          functions
+        )
 
       assert is_list(responses)
       last_response = List.last(responses)
@@ -317,33 +365,36 @@ defmodule OpenAI.ResponsesTest do
         end
       }
 
-      divide_tool = Responses.Schema.build_function(
-        "divide",
-        "Divide two numbers",
-        %{a: :number, b: :number}
-      )
+      divide_tool =
+        Responses.Schema.build_function(
+          "divide",
+          "Divide two numbers",
+          %{a: :number, b: :number}
+        )
 
-      responses = Responses.run(
-        [
-          input: "What is 10 divided by 5?",
-          tools: [divide_tool]
-        ],
-        functions
-      )
+      responses =
+        Responses.run(
+          [
+            input: "What is 10 divided by 5?",
+            tools: [divide_tool]
+          ],
+          functions
+        )
 
       # Should handle normal division
       assert is_list(responses)
       assert length(responses) >= 2
-      
+
       # Test division by zero separately
-      zero_responses = Responses.run(
-        [
-          input: "What is 10 divided by 0?",
-          tools: [divide_tool]
-        ],
-        functions
-      )
-      
+      zero_responses =
+        Responses.run(
+          [
+            input: "What is 10 divided by 0?",
+            tools: [divide_tool]
+          ],
+          functions
+        )
+
       # Should handle the exception gracefully
       assert is_list(zero_responses)
     end
@@ -354,10 +405,11 @@ defmodule OpenAI.ResponsesTest do
         "unused_function" => fn _ -> "This won't be called" end
       }
 
-      responses = Responses.run(
-        [input: "Just tell me a joke about programming"],
-        functions
-      )
+      responses =
+        Responses.run(
+          [input: "Just tell me a joke about programming"],
+          functions
+        )
 
       # Should only have one response since no functions were called
       assert length(responses) == 1

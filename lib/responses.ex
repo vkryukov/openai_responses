@@ -106,6 +106,18 @@ defmodule OpenAI.Responses do
   """
   def create(%Response{} = previous_response, options) do
     options = options |> Keyword.put(:previous_response_id, previous_response.body["id"])
+    
+    # Preserve the model from the previous response if not explicitly provided
+    options =
+      if Keyword.has_key?(options, :model) do
+        options
+      else
+        case previous_response.body["model"] do
+          nil -> options
+          model -> Keyword.put(options, :model, model)
+        end
+      end
+    
     create(options)
   end
 
