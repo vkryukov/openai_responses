@@ -102,6 +102,36 @@ responses = Responses.run(
 final_answer = List.last(responses).text
 ```
 
+### call_functions/2
+Executes function calls from a response and formats results for the API.
+
+```elixir
+# Get a response with function calls
+{:ok, response} = Responses.create(
+  input: "What's the weather in Paris?",
+  tools: [weather_tool]
+)
+
+# Manually execute functions
+functions = %{
+  "get_weather" => fn %{"location" => loc} ->
+    # Custom logic before/after the actual call
+    result = fetch_weather_data(loc)
+    log_api_call(:weather, loc)
+    # Result must be JSON-encodable (map, list, string, number, boolean, nil)
+    %{temperature: result.temp, unit: "C", conditions: result.conditions}
+  end
+}
+
+# Get formatted outputs
+outputs = Responses.call_functions(response.function_calls, functions)
+
+# Continue conversation with custom context
+{:ok, final} = Responses.create(response, 
+  input: outputs ++ [%{type: "user", content: "Convert to Fahrenheit"}]
+)
+```
+
 ### list_models/0 and list_models/1
 Lists available OpenAI models with optional filtering.
 
@@ -352,5 +382,7 @@ end
 - Text extraction is idempotent (safe to call multiple times)
 - Streaming callbacks should return `:ok` to continue or `{:error, reason}` to stop
 - Function calling with `run/2` handles multiple rounds automatically
+- Use `call_functions/2` for manual control over function execution
+- Function outputs must be JSON-encodable (no tuples, atoms except true/false/nil)
 - Structured outputs guarantee exact schema compliance
 - Use `!` versions for simpler code when errors should crash

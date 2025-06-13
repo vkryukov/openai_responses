@@ -13,6 +13,7 @@ defmodule OpenAI.Responses do
   - `create/1` and `create/2` - Create AI responses (synchronous or streaming)
   - `create!/1` and `create!/2` - Same as create but raises on error
   - `run/2` and `run!/2` - Run conversations with automatic function calling
+  - `call_functions/2` - Execute function calls and format results for the API
   - `stream/1` - Stream responses as an Enumerable
   - `list_models/0` and `list_models/1` - List available OpenAI models
   - `request/1` - Low-level API request function
@@ -304,40 +305,11 @@ defmodule OpenAI.Responses do
 
       calls ->
         # Process function calls and continue
-        function_results = process_function_calls(calls, functions)
+        function_results = call_functions(calls, functions)
 
         # Continue conversation with function results using the latest response
         do_run(response, [input: function_results], functions, responses)
     end
-  end
-
-  defp process_function_calls(calls, functions) do
-    Enum.map(calls, fn call ->
-      function_name = call.name
-      function = get_function(functions, function_name)
-
-      result =
-        case function do
-          nil ->
-            "Error: Function '#{function_name}' not found"
-
-          f when is_function(f, 1) ->
-            try do
-              f.(call.arguments) |> to_string()
-            rescue
-              e -> "Error calling function '#{function_name}': #{Exception.message(e)}"
-            end
-
-          _ ->
-            "Error: Invalid function for '#{function_name}'"
-        end
-
-      %{
-        type: "function_call_output",
-        call_id: call.call_id,
-        output: result
-      }
-    end)
   end
 
   defp get_function(functions, name) when is_map(functions) do
@@ -374,6 +346,90 @@ defmodule OpenAI.Responses do
       responses when is_list(responses) -> responses
       {:error, reason} -> raise "Function calling failed: #{inspect(reason)}"
     end
+  end
+
+  @doc """
+  Execute function calls from a response and format the results for the API.
+
+  Takes the function_calls from a response and a map/keyword list of functions,
+  executes each function with its arguments, and returns the formatted results
+  ready to be used as input for the next API call.
+
+  ## Parameters
+
+  - `function_calls` - The function_calls array from a Response struct
+  - `functions` - A map or keyword list where:
+    - Keys are function names (as atoms or strings)
+    - Values are functions that accept the parsed arguments and return the result
+
+  ## Returns
+
+  Returns a list of formatted function outputs suitable for use as input to `create/2`.
+  
+  **Important**: Function return values must be JSON-encodable. This means they should
+  only contain basic types (strings, numbers, booleans, nil), lists, and maps. Tuples,
+  atoms (except `true`, `false`, and `nil`), and other Elixir-specific types are not
+  supported by default unless they implement the `Jason.Encoder` protocol.
+
+  ## Examples
+
+      # Get a response with function calls
+      {:ok, response} = Responses.create(
+        input: "What's the weather in Paris and what time is it?",
+        tools: [weather_tool, time_tool]
+      )
+
+      # Define the actual function implementations
+      functions = %{
+        "get_weather" => fn %{"location" => location} ->
+          # Returns a map (JSON-encodable)
+          %{temperature: 22, unit: "C", location: location}
+        end,
+        "get_time" => fn %{} ->
+          # Returns a string (JSON-encodable)
+          DateTime.utc_now() |> to_string()
+        end
+      }
+
+      # Execute the functions and get formatted output
+      outputs = Responses.call_functions(response.function_calls, functions)
+      
+      # Continue the conversation with the function results
+      {:ok, final_response} = Responses.create(response, input: outputs)
+
+  ## Error Handling
+
+  If a function is not found or raises an error, the output will contain
+  an error message instead of the function result.
+  """
+  def call_functions(function_calls, functions)
+      when is_list(function_calls) and (is_map(functions) or is_list(functions)) do
+    Enum.map(function_calls, fn call ->
+      function_name = call.name
+      function = get_function(functions, function_name)
+
+      result =
+        case function do
+          nil ->
+            "Error: Function '#{function_name}' not found"
+
+          f when is_function(f, 1) ->
+            try do
+              f.(call.arguments)
+            rescue
+              e -> "Error calling function '#{function_name}': #{Exception.message(e)}"
+            end
+
+          _ ->
+            "Error: Invalid function for '#{function_name}'"
+        end
+
+      %{
+        type: "function_call_output",
+        call_id: call.call_id,
+        output: result
+      }
+    end)
   end
 
   @doc """

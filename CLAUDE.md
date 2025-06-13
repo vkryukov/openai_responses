@@ -33,6 +33,8 @@ mix docs
 **`OpenAI.Responses`** - Main API interface
 - `create/1` and `create/2` - Synchronous or streaming AI responses
 - `create!/1` and `create!/2` - Same as create but raises on error
+- `run/2` and `run!/2` - Run conversations with automatic function calling
+- `call_functions/2` - Execute function calls from a response and format results
 - `stream/1` - Returns an Enumerable for stream processing
 - `list_models/0` and `list_models/1` - Lists available OpenAI models
 - `request/1` - Low-level API request function
@@ -76,6 +78,8 @@ API Key (required) - set via one of:
 7. `extract_json/1` automatically calls `extract_text/1` if text is not already extracted
 8. Streaming with callbacks now returns `{:ok, %Response{}}` with complete metadata
 9. All extraction functions are idempotent and safe to call multiple times
+10. `call_functions/2` allows manual control over function execution for custom workflows
+11. Function errors are gracefully handled and returned as error messages to the model
 
 ### Testing
 

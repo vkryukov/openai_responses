@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `[:anyOf, [:string, :number]]` - list syntax for simple unions
   - Complex unions with objects and nested structures are fully supported
 - **LLM usage guide** - Added comprehensive `usage-rules.md` documentation with detailed examples and best practices for using the OpenAI.Responses library with LLM agents
-- **Claude Code integration** - Added `.claude/settings.json` configuration to enable Claude Code to run mix commands for development
+- **Manual function calling with `call_functions/2`** - Added public function to execute function calls from a response and format results for the API. This enables custom workflows where users need to intercept, modify, or add context to function results before continuing the conversation. Function return values are passed through without string conversion, so they must be JSON-encodable (maps, lists, strings, numbers, booleans, nil)
 
 ### Fixed
 - **Model preservation in follow-up responses** - `create/2` now correctly preserves the model from the previous response when creating follow-ups, instead of defaulting to the standard model. The model can still be explicitly overridden when needed
