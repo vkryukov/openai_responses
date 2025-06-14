@@ -23,9 +23,9 @@ The basic usage is simple: set the `OPENAI_API_KEY` environment variable and add
 
 ```elixir
 def deps do
-  [ 
+  [
     # ...
-    {:openai_responses, "~> 0.4.0"}
+    {:openai_responses, "~> 0.5.0"}
   ]
 end
 ```
@@ -127,7 +127,7 @@ Kino.render(frame)
 
 Responses.stream(
   input: """
-  Write a short fairy tale about an Elixir developer who tried to use Java, 
+  Write a short fairy tale about an Elixir developer who tried to use Java,
   and about the horrors that have ensued.
   """,
   temperature: 0.7
@@ -161,7 +161,7 @@ Using OpenAI built-in tools, for example [Web Search](https://platform.openai.co
 
 ```elixir
 alias OpenAI.Responses
-  
+
 Responses.create!(
   input: "Summarize in 3 paragraphs a positive news story from today",
   tools: [%{type: "web_search_preview"}]
@@ -191,14 +191,14 @@ response.function_calls
 The resulting `%Response{}` has a `:function_calls` field populated with the function calls requested by the model. Our app can now call each function, and we can provide results back to the model:
 
 ```elixir
-response 
+response
 |> Responses.create!(
   input: [%{
     type: "function_call_output",
     call_id: response.function_calls |> List.first() |> Map.get(:call_id),
     output: "15C"
   }]
-) 
+)
 |> Map.get(:text)
 ```
 
@@ -222,7 +222,7 @@ functions = %{
     # In a real app, this would get actual time for timezone
     case timezone do
       "Europe/Paris" -> "14:30"
-      "Europe/London" -> "13:30" 
+      "Europe/London" -> "13:30"
       "America/New_York" -> "08:30"
       _ -> "Unknown timezone"
     end
@@ -237,7 +237,7 @@ weather_tool = Responses.Schema.build_function(
 )
 
 time_tool = Responses.Schema.build_function(
-  "get_time", 
+  "get_time",
   "Get current time in a timezone",
   %{timezone: {:string, description: "Timezone like Europe/Paris"}}
 )

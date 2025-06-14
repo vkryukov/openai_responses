@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## 0.5.0
 
 ### Added
 - **Union type support via `anyOf`** - `Schema.build_output/1` and `Schema.build_function/3` now support union types through the `anyOf` specification. This allows defining properties that can be one of multiple types:
@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Complex unions with objects and nested structures are fully supported
 - **LLM usage guide** - Added comprehensive `usage-rules.md` documentation with detailed examples and best practices for using the OpenAI.Responses library with LLM agents
 - **Manual function calling with `call_functions/2`** - Added public function to execute function calls from a response and format results for the API. This enables custom workflows where users need to intercept, modify, or add context to function results before continuing the conversation. Function return values are passed through without string conversion, so they must be JSON-encodable (maps, lists, strings, numbers, booleans, nil)
+- **Error module with retry support** - Added `OpenAI.Responses.Error` exception module that:
+  - Represents OpenAI API errors with fields for message, code, param, type, and HTTP status
+  - Provides `retryable?/1` function to determine if errors can be retried
+  - Supports both HTTP status codes (429, 500, 503) and Req transport errors (timeout, closed)
 
 ### Fixed
 - **Model preservation in follow-up responses** - `create/2` now correctly preserves the model from the previous response when creating follow-ups, instead of defaulting to the standard model. The model can still be explicitly overridden when needed

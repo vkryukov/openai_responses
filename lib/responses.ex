@@ -34,6 +34,7 @@ defmodule OpenAI.Responses do
   alias OpenAI.Responses
   alias OpenAI.Responses.Response
   alias OpenAI.Responses.Internal
+  alias OpenAI.Responses.Error
 
   @doc """
   Create a new response.
@@ -107,7 +108,7 @@ defmodule OpenAI.Responses do
   """
   def create(%Response{} = previous_response, options) do
     options = options |> Keyword.put(:previous_response_id, previous_response.body["id"])
-    
+
     # Preserve the model from the previous response if not explicitly provided
     options =
       if Keyword.has_key?(options, :model) do
@@ -118,7 +119,7 @@ defmodule OpenAI.Responses do
           model -> Keyword.put(options, :model, model)
         end
       end
-    
+
     create(options)
   end
 
@@ -133,8 +134,10 @@ defmodule OpenAI.Responses do
       IO.puts(response.text)
   """
   def create!(options) do
-    {:ok, response} = create(options)
-    response
+    case create(options) do
+      {:ok, response} -> response
+      {:error, error} -> raise error
+    end
   end
 
   @doc """
@@ -148,8 +151,10 @@ defmodule OpenAI.Responses do
       followup = Responses.create!(first, input: "Tell me more")
   """
   def create!(%Response{} = previous_response, options) do
-    {:ok, response} = create(previous_response, options)
-    response
+    case create(previous_response, options) do
+      {:ok, response} -> response
+      {:error, error} -> raise error
+    end
   end
 
   @doc """
@@ -365,7 +370,7 @@ defmodule OpenAI.Responses do
   ## Returns
 
   Returns a list of formatted function outputs suitable for use as input to `create/2`.
-  
+
   **Important**: Function return values must be JSON-encodable. This means they should
   only contain basic types (strings, numbers, booleans, nil), lists, and maps. Tuples,
   atoms (except `true`, `false`, and `nil`), and other Elixir-specific types are not
@@ -393,7 +398,7 @@ defmodule OpenAI.Responses do
 
       # Execute the functions and get formatted output
       outputs = Responses.call_functions(response.function_calls, functions)
-      
+
       # Continue the conversation with the function results
       {:ok, final_response} = Responses.create(response, input: outputs)
 
@@ -452,8 +457,8 @@ defmodule OpenAI.Responses do
       {:ok, %Req.Response{status: 200, body: body}} ->
         {:ok, %Response{body: body}}
 
-      {:ok, %Req.Response{body: %{"error" => error}}} ->
-        {:error, error}
+      {:ok, resp = %Req.Response{}} ->
+        {:error, Error.from_response(resp)}
 
       {_status, other} ->
         {:error, other}

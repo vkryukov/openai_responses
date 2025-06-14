@@ -6,7 +6,7 @@ This guide covers all public-facing functions of the OpenAI.Responses package fo
 
 ```elixir
 # Add to mix.exs
-{:openai_responses, "~> 0.4.2"}
+{:openai_responses, "~> 0.5.0"}
 
 # Set API key via environment variable
 export OPENAI_API_KEY="your-key"
@@ -127,7 +127,7 @@ functions = %{
 outputs = Responses.call_functions(response.function_calls, functions)
 
 # Continue conversation with custom context
-{:ok, final} = Responses.create(response, 
+{:ok, final} = Responses.create(response,
   input: outputs ++ [%{type: "user", content: "Convert to Fahrenheit"}]
 )
 ```
