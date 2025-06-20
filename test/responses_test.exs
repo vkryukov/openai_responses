@@ -18,11 +18,13 @@ defmodule OpenAI.ResponsesTest do
     response =
       Responses.create!(
         input: "Write a haiku about Elixir programming language",
-        model: "gpt-4.1"
+        model: "gpt-4o"
       )
 
     assert String.split(response.text, "\n") |> Enum.count() == 3
-    assert response.body["model"] =~ ~r/gpt-4.1/
+    assert response.body["model"] =~ ~r/gpt-4o/
+    # Ensure it's not using the default model
+    refute response.body["model"] =~ ~r/gpt-4\.1-mini/
   end
 
   @tag :api
@@ -72,17 +74,17 @@ defmodule OpenAI.ResponsesTest do
     initial_response =
       Responses.create!(
         input: "Say hello",
-        model: "gpt-4.1"
+        model: "gpt-4o"
       )
 
     # Verify the initial response uses the specified model
-    assert initial_response.body["model"] =~ ~r/gpt-4.1/
+    assert initial_response.body["model"] =~ ~r/gpt-4o/
 
     # Create follow-up without specifying model
     follow_up_response = Responses.create!(initial_response, input: "Say goodbye")
 
     # The follow-up should use the same model as the initial response
-    assert follow_up_response.body["model"] =~ ~r/gpt-4.1/
+    assert follow_up_response.body["model"] == initial_response.body["model"]
   end
 
   @tag :api
@@ -91,7 +93,7 @@ defmodule OpenAI.ResponsesTest do
     initial_response =
       Responses.create!(
         input: "Say hello",
-        model: "gpt-4.1"
+        model: "gpt-4o"
       )
 
     # Create follow-up with a different model
@@ -104,6 +106,58 @@ defmodule OpenAI.ResponsesTest do
 
     # The follow-up should use the explicitly provided model
     assert follow_up_response.body["model"] =~ ~r/gpt-4.1-nano/
+  end
+
+  @tag :api
+  test "create/1 with manual previous_response_id uses default model when no model specified" do
+    # Create initial response with a specific model
+    initial_response =
+      Responses.create!(
+        input: "Say hello",
+        model: "gpt-4o-mini"
+      )
+
+    # Verify the initial response uses the specified model
+    assert initial_response.body["model"] =~ ~r/gpt-4o-mini/
+
+    # When using manual previous_response_id without specifying a model,
+    # the default model is used (NOT inherited from previous response)
+    follow_up_response =
+      Responses.create!(
+        input: "Say goodbye",
+        previous_response_id: initial_response.body["id"]
+      )
+
+    # The default model is used since we didn't specify one
+    # Default model is gpt-4.1-mini, not gpt-4o-mini
+    assert follow_up_response.body["model"] =~ ~r/gpt-4\.1-mini/
+    refute follow_up_response.body["model"] =~ ~r/gpt-4o-mini/
+    
+    # Verify it maintains context from previous response
+    assert follow_up_response.body["previous_response_id"] == initial_response.body["id"]
+  end
+
+  @tag :api
+  test "create/1 with manual previous_response_id and explicit model uses the specified model" do
+    # Create initial response with a specific model
+    initial_response =
+      Responses.create!(
+        input: "Say hello",
+        model: "gpt-4o-mini"
+      )
+
+    # Create follow-up using manual previous_response_id with explicit model
+    follow_up_response =
+      Responses.create!(
+        input: "Say goodbye",
+        previous_response_id: initial_response.body["id"],
+        model: "gpt-4o"
+      )
+
+    # The follow-up should use the explicitly provided model
+    assert follow_up_response.body["model"] =~ ~r/gpt-4o/
+    # And not the model from the previous response
+    refute follow_up_response.body["model"] =~ ~r/gpt-4o-mini/
   end
 
   describe "create with schema option" do

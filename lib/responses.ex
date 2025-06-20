@@ -43,6 +43,27 @@ defmodule OpenAI.Responses do
   Otherwise, the argument is expected to be a keyword list of options that OpenAI expects,
   such as `input`, `model`, `temperature`, `max_tokens`, etc.
 
+  ## Model Behavior with previous_response_id
+
+  The OpenAI API always requires a model parameter, even when using `previous_response_id`.
+  
+  When using `create/1` with manual `previous_response_id`:
+  - If no model is specified, the default model is used
+  - The model from the previous response is NOT automatically inherited
+  
+  When using `create/2` with a Response object:
+  - The model from the previous response IS automatically inherited
+  - You can override it by explicitly specifying a different model
+
+      # Manual previous_response_id - uses default model if not specified
+      Responses.create(input: "Hello", previous_response_id: "resp_123")
+      
+      # Manual previous_response_id - with explicit model
+      Responses.create(input: "Hello", previous_response_id: "resp_123", model: "gpt-4.1")
+
+      # Using create/2 - automatically inherits model from previous response
+      Responses.create(previous_response, input: "Hello")
+
   ## Streaming
 
   Pass a `stream:` option with a callback function to stream the response.
