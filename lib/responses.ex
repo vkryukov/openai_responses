@@ -46,18 +46,18 @@ defmodule OpenAI.Responses do
   ## Model Behavior with previous_response_id
 
   The OpenAI API always requires a model parameter, even when using `previous_response_id`.
-  
+
   When using `create/1` with manual `previous_response_id`:
   - If no model is specified, the default model is used
   - The model from the previous response is NOT automatically inherited
-  
+
   When using `create/2` with a Response object:
   - The model from the previous response IS automatically inherited
   - You can override it by explicitly specifying a different model
 
       # Manual previous_response_id - uses default model if not specified
       Responses.create(input: "Hello", previous_response_id: "resp_123")
-      
+
       # Manual previous_response_id - with explicit model
       Responses.create(input: "Hello", previous_response_id: "resp_123", model: "gpt-4.1")
 
@@ -431,7 +431,8 @@ defmodule OpenAI.Responses do
   def call_functions(function_calls, functions)
       when is_list(function_calls) and (is_map(functions) or is_list(functions)) do
     Enum.map(function_calls, fn call ->
-      function_name = call.name
+      call = map_convert_atom_keys_to_strings(call)
+      function_name = call["name"]
       function = get_function(functions, function_name)
 
       result =
@@ -441,7 +442,7 @@ defmodule OpenAI.Responses do
 
           f when is_function(f, 1) ->
             try do
-              f.(call.arguments)
+              f.(call["arguments"])
             rescue
               e -> "Error calling function '#{function_name}': #{Exception.message(e)}"
             end
@@ -452,10 +453,15 @@ defmodule OpenAI.Responses do
 
       %{
         type: "function_call_output",
-        call_id: call.call_id,
+        call_id: call["call_id"],
         output: result
       }
     end)
+  end
+
+  defp map_convert_atom_keys_to_strings(map) do
+    map
+    |> Enum.into(%{}, fn {k, v} -> {to_string(k), v} end)
   end
 
   @doc """
