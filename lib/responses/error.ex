@@ -28,7 +28,7 @@ defmodule OpenAI.Responses.Error do
   defexception [:message, :code, :param, :type, :status]
 
   def from_response(response = %Req.Response{}) do
-    error = response.body["error"]
+    error = if is_map(response.body), do: response.body["error"], else: nil
 
     if is_map(error) do
       %__MODULE__{
