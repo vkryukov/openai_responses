@@ -60,7 +60,7 @@ defmodule OpenAI.ResponsesTest do
     Agent.stop(collected_text)
 
     assert response.text != nil
-    assert final_text =~ ~r/1.*2.*3/
+    assert final_text =~ ~r/1.*2.*3/s
   end
 
   @tag :api
