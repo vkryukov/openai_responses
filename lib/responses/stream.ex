@@ -116,6 +116,11 @@ defmodule OpenAI.Responses.Stream do
     end
   end
 
+  def stream_with_callback(callback, options) when is_map(options) do
+    options = Map.to_list(options)
+    stream_with_callback(callback, options)
+  end
+
   defp parse_stream_chunks(callback, chunk) do
     chunk
     |> String.split("\n\n", trim: true)
@@ -180,6 +185,11 @@ defmodule OpenAI.Responses.Stream do
       &stream_next/1,
       &cleanup_stream/1
     )
+  end
+
+  def stream(options) when is_map(options) do
+    options = Map.to_list(options)
+    stream(options)
   end
 
   defp start_streaming(options) do

@@ -138,12 +138,19 @@ defmodule OpenAI.Responses do
   This allows creating follow-up responses that maintain context from a previous response.
   The previous response's ID is automatically included in the request.
 
+  Options can be provided as either a keyword list or a map.
+
   ## Examples
 
       {:ok, first} = Responses.create("What is Elixir?")
+      
+      # Using keyword list
       {:ok, followup} = Responses.create(first, input: "Tell me more about its concurrency model")
+      
+      # Using map
+      {:ok, followup} = Responses.create(first, %{input: "Tell me more about its concurrency model"})
   """
-  def create(%Response{} = previous_response, options) do
+  def create(%Response{} = previous_response, options) when is_list(options) do
     options = options |> Keyword.put(:previous_response_id, previous_response.body["id"])
 
     # Preserve the model from the previous response if not explicitly provided
@@ -158,6 +165,11 @@ defmodule OpenAI.Responses do
       end
 
     create(options)
+  end
+
+  def create(%Response{} = previous_response, options) when is_map(options) do
+    options = Map.to_list(options)
+    create(previous_response, options)
   end
 
   @doc """
@@ -198,6 +210,8 @@ defmodule OpenAI.Responses do
   Stream a response from the OpenAI API as an Enumerable.
 
   Returns a Stream that yields chunks with `event` and `data` keys.
+  
+  Options can be provided as either a keyword list or a map.
 
   ## Examples
 
@@ -218,8 +232,8 @@ defmodule OpenAI.Responses do
       |> Stream.map(fn {:ok, chunk} -> chunk.data["delta"] end)
       |> Enum.each(&IO.write/1)
 
-      # Accumulate all text with error handling
-      result = Responses.stream(input: "Explain quantum physics")
+      # Accumulate all text with error handling (using map)
+      result = Responses.stream(%{input: "Explain quantum physics"})
                |> Enum.reduce(%{text: "", errors: []}, fn
                  {:ok, %{event: "response.output_text.delta", data: %{"delta" => delta}}}, acc ->
                    %{acc | text: acc.text <> delta}
@@ -231,6 +245,11 @@ defmodule OpenAI.Responses do
   """
   def stream(options) when is_list(options) do
     Responses.Stream.stream(options)
+  end
+
+  def stream(options) when is_map(options) do
+    options = Map.to_list(options)
+    stream(options)
   end
 
   def stream(input) when is_binary(input) do
@@ -258,7 +277,7 @@ defmodule OpenAI.Responses do
 
   ## Parameters
 
-  - `options` - Keyword list of options to pass to `create/1`
+  - `options` - Keyword list or map of options to pass to `create/1`
   - `functions` - A map or keyword list where:
     - Keys are function names (as atoms or strings)
     - Values are functions that accept the parsed arguments and return the result
@@ -294,10 +313,17 @@ defmodule OpenAI.Responses do
         %{}
       )
 
-      # Run the conversation
+      # Run the conversation (with keyword list)
       responses = Responses.run(
         [input: "What's the weather in Paris and what time is it?",
          tools: [weather_tool, time_tool]],
+        functions
+      )
+
+      # Or with map
+      responses = Responses.run(
+        %{input: "What's the weather in Paris and what time is it?",
+          tools: [weather_tool, time_tool]},
         functions
       )
 
@@ -311,6 +337,12 @@ defmodule OpenAI.Responses do
       responses when is_list(responses) -> Enum.reverse(responses)
       error -> error
     end
+  end
+
+  def run(options, functions)
+      when is_map(options) and (is_map(functions) or is_list(functions)) do
+    options = Map.to_list(options)
+    run(options, functions)
   end
 
   defp do_run(options, functions, responses) do

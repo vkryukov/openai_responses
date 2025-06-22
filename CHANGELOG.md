@@ -6,10 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-- **Map support for `create/1`** - The `create/1` function now accepts maps in addition to keyword lists for options. This provides more flexibility and consistency with Elixir conventions:
-  - `Responses.create(%{input: "Hello", model: "gpt-4o"})` - using a map
-  - `Responses.create(input: "Hello", model: "gpt-4o")` - using a keyword list (existing)
+- **Map support for options** - Multiple functions now accept maps in addition to keyword lists for options, providing more flexibility and consistency with Elixir conventions:
+  - `create/1` and `create/2` - Create responses with map or keyword list options
+  - `stream/1` - Stream responses using map or keyword list options
+  - `run/2` - Run function calling conversations with map or keyword list options
+  - `Stream.stream/1` and `Stream.stream_with_callback/2` - Stream functions also accept maps
   - Maps with mixed atom and string keys are supported
+  - Example: `Responses.create(%{input: "Hello", model: "gpt-4o"})`
 
 ## 0.5.0
 

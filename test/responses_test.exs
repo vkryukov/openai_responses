@@ -137,6 +137,21 @@ defmodule OpenAI.ResponsesTest do
   end
 
   @tag :api
+  test "create/2 accepts maps for options" do
+    # Create initial response
+    initial_response = Responses.create!("Say hello")
+
+    # Create follow-up with map options
+    follow_up_response = Responses.create!(initial_response, %{
+      input: "Say goodbye in exactly two words",
+      temperature: 0.5
+    })
+
+    assert String.split(follow_up_response.text, " ") |> Enum.count() == 2
+    assert follow_up_response.body["previous_response_id"] == initial_response.body["id"]
+  end
+
+  @tag :api
   test "create/2 allows overriding model from previous response" do
     # Create initial response with a specific model
     initial_response =
