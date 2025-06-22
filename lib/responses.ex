@@ -40,7 +40,7 @@ defmodule OpenAI.Responses do
   Create a new response.
 
   When the argument is a string, it is used as the input text.
-  Otherwise, the argument is expected to be a keyword list of options that OpenAI expects,
+  Otherwise, the argument is expected to be a keyword list or map of options that OpenAI expects,
   such as `input`, `model`, `temperature`, `max_tokens`, etc.
 
   ## Model Behavior with previous_response_id
@@ -63,6 +63,17 @@ defmodule OpenAI.Responses do
 
       # Using create/2 - automatically inherits model from previous response
       Responses.create(previous_response, input: "Hello")
+
+  ## Examples
+
+      # Using a keyword list
+      Responses.create(input: "Hello", model: "gpt-4.1", temperature: 0.7)
+
+      # Using a map
+      Responses.create(%{input: "Hello", model: "gpt-4.1", temperature: 0.7})
+
+      # String shorthand
+      Responses.create("Hello")
 
   ## Streaming
 
@@ -110,6 +121,11 @@ defmodule OpenAI.Responses do
     with {:ok, response} <- result do
       {:ok, process_response(response)}
     end
+  end
+
+  def create(options) when is_map(options) do
+    options = Map.to_list(options)
+    create(options)
   end
 
   def create(input) when is_binary(input) do

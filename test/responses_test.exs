@@ -28,6 +28,55 @@ defmodule OpenAI.ResponsesTest do
   end
 
   @tag :api
+  test "create with a map argument" do
+    response =
+      Responses.create!(%{
+        input: "Reply with exactly three words about Elixir",
+        model: "gpt-4o"
+      })
+
+    assert String.split(response.text, " ") |> Enum.count() == 3
+    assert response.body["model"] =~ ~r/gpt-4o/
+  end
+
+  @tag :api
+  test "create with a map including stream callback" do
+    collected_text = Agent.start_link(fn -> "" end) |> elem(1)
+
+    {:ok, response} =
+      Responses.create(%{
+        input: "Count from 1 to 3",
+        stream: fn
+          {:ok, %{event: "response.output_text.delta", data: %{"delta" => text}}} ->
+            Agent.update(collected_text, &(&1 <> text))
+            :ok
+
+          _ ->
+            :ok
+        end
+      })
+
+    final_text = Agent.get(collected_text, & &1)
+    Agent.stop(collected_text)
+
+    assert response.text != nil
+    assert final_text =~ ~r/1.*2.*3/
+  end
+
+  @tag :api
+  test "create with a map with atom and string keys" do
+    # Maps with mixed atom and string keys should work
+    response =
+      Responses.create!(%{
+        "input" => "Reply with exactly two words",
+        :model => "gpt-4o"
+      })
+
+    assert String.split(response.text, " ") |> Enum.count() == 2
+    assert response.body["model"] =~ ~r/gpt-4o/
+  end
+
+  @tag :api
   test "list_models returns available models" do
     models = Responses.list_models()
 

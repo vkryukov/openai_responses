@@ -3,6 +3,14 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+- **Map support for `create/1`** - The `create/1` function now accepts maps in addition to keyword lists for options. This provides more flexibility and consistency with Elixir conventions:
+  - `Responses.create(%{input: "Hello", model: "gpt-4o"})` - using a map
+  - `Responses.create(input: "Hello", model: "gpt-4o")` - using a keyword list (existing)
+  - Maps with mixed atom and string keys are supported
+
 ## 0.5.0
 
 ### Added
