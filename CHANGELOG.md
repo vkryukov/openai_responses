@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `create/1` and `create/2` - Create responses with map or keyword list options
   - `stream/1` - Stream responses using map or keyword list options
   - `run/2` - Run function calling conversations with map or keyword list options
-  - `Stream.stream/1` and `Stream.stream_with_callback/2` - Stream functions also accept maps
+  - `OpenAI.Responses.Stream.stream/1` and `OpenAI.Responses.Stream.stream_with_callback/2` - Stream functions also accept maps
   - Maps with mixed atom and string keys are supported
   - Example: `Responses.create(%{input: "Hello", model: "gpt-4o"})`
 
