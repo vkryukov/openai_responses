@@ -105,12 +105,13 @@ defmodule OpenAI.Responses do
 
   If no model is specified, the default model is used.
   """
-  def create(options) when is_list(options) do
-    {stream_callback, options} = Keyword.pop(options, :stream)
-
+  def create(options) when is_list(options) or is_map(options) do
+    # Extract stream callback (helper automatically checks both atom and string keys)
+    stream_callback = get_option(options, :stream)
+    
     result =
       if stream_callback do
-        # Handle streaming
+        # Handle streaming - pass options directly
         Responses.Stream.stream_with_callback(stream_callback, options)
       else
         # Regular non-streaming request
@@ -121,11 +122,6 @@ defmodule OpenAI.Responses do
     with {:ok, response} <- result do
       {:ok, process_response(response)}
     end
-  end
-
-  def create(options) when is_map(options) do
-    options = Map.to_list(options)
-    create(options)
   end
 
   def create(input) when is_binary(input) do
@@ -150,26 +146,25 @@ defmodule OpenAI.Responses do
       # Using map
       {:ok, followup} = Responses.create(first, %{input: "Tell me more about its concurrency model"})
   """
-  def create(%Response{} = previous_response, options) when is_list(options) do
-    options = options |> Keyword.put(:previous_response_id, previous_response.body["id"])
+  def create(%Response{} = previous_response, options) when is_list(options) or is_map(options) do
+    # Convert to map for easier manipulation
+    options_map = if is_list(options), do: Map.new(options), else: options
+    
+    # Add previous_response_id
+    options_map = Map.put(options_map, :previous_response_id, previous_response.body["id"])
 
     # Preserve the model from the previous response if not explicitly provided
-    options =
-      if Keyword.has_key?(options, :model) do
-        options
+    options_map =
+      if has_option?(options_map, :model) do
+        options_map
       else
         case previous_response.body["model"] do
-          nil -> options
-          model -> Keyword.put(options, :model, model)
+          nil -> options_map
+          model -> Map.put(options_map, :model, model)
         end
       end
 
-    create(options)
-  end
-
-  def create(%Response{} = previous_response, options) when is_map(options) do
-    options = Map.to_list(options)
-    create(previous_response, options)
+    create(options_map)
   end
 
   @doc """
@@ -248,7 +243,6 @@ defmodule OpenAI.Responses do
   end
 
   def stream(options) when is_map(options) do
-    options = Map.to_list(options)
     stream(options)
   end
 
@@ -341,8 +335,9 @@ defmodule OpenAI.Responses do
 
   def run(options, functions)
       when is_map(options) and (is_map(functions) or is_list(functions)) do
-    options = Map.to_list(options)
-    run(options, functions)
+    # Convert map to list for processing
+    options_list = Map.to_list(options)
+    run(options_list, functions)
   end
 
   defp do_run(options, functions, responses) do
@@ -508,8 +503,7 @@ defmodule OpenAI.Responses do
   end
 
   defp map_convert_atom_keys_to_strings(map) do
-    map
-    |> Enum.into(%{}, fn {k, v} -> {to_string(k), v} end)
+    Map.new(map, fn {k, v} -> {to_string(k), v} end)
   end
 
   @doc """
@@ -546,5 +540,44 @@ defmodule OpenAI.Responses do
     |> Response.extract_json()
     |> Response.extract_function_calls()
     |> Response.calculate_cost()
+  end
+
+  # Helper to get option from either keyword list or map, checking both atom and string keys
+  defp get_option(options, key) when is_list(options) and is_atom(key) do
+    # Keyword lists only support atom keys
+    Keyword.get(options, key)
+  end
+
+  defp get_option(options, key) when is_list(options) and is_binary(key) do
+    # Try to convert string to atom for keyword list lookup
+    try do
+      Keyword.get(options, String.to_existing_atom(key))
+    rescue
+      ArgumentError -> nil
+    end
+  end
+
+  defp get_option(options, key) when is_map(options) and is_atom(key) do
+    # Check both atom and string versions of the key
+    Map.get(options, key) || Map.get(options, to_string(key))
+  end
+
+  defp get_option(options, key) when is_map(options) and is_binary(key) do
+    # Check string key first, then try atom version
+    case Map.get(options, key) do
+      nil ->
+        try do
+          Map.get(options, String.to_existing_atom(key))
+        rescue
+          ArgumentError -> nil
+        end
+      value ->
+        value
+    end
+  end
+
+  # Helper to check if option exists (for any key variant)
+  defp has_option?(options, key) when is_atom(key) do
+    get_option(options, key) != nil || get_option(options, to_string(key)) != nil
   end
 end

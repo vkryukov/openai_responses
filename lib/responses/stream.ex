@@ -73,7 +73,7 @@ defmodule OpenAI.Responses.Stream do
           :ok
       end, input: "Tell me a joke")
   """
-  def stream_with_callback(callback, options) when is_list(options) do
+  def stream_with_callback(callback, options) do
     # Use an agent to store the final response data
     {:ok, agent} = Agent.start_link(fn -> nil end)
 
@@ -90,11 +90,17 @@ defmodule OpenAI.Responses.Stream do
       end
     end
 
+    # Ensure options are normalized and add stream: true
+    normalized_options = 
+      options
+      |> Internal.prepare_payload()
+      |> Map.put("stream", true)
+
     # Make the streaming request
     result =
       Responses.request(
         url: "/responses",
-        json: Internal.prepare_payload(options |> Keyword.put(:stream, true)),
+        json: normalized_options,
         method: :post,
         into: fn {:data, data}, {req, resp} ->
           parse_stream_chunks(wrapped_callback, data)
@@ -114,11 +120,6 @@ defmodule OpenAI.Responses.Stream do
       _ ->
         result
     end
-  end
-
-  def stream_with_callback(callback, options) when is_map(options) do
-    options = Map.to_list(options)
-    stream_with_callback(callback, options)
   end
 
   defp parse_stream_chunks(callback, chunk) do
@@ -188,8 +189,11 @@ defmodule OpenAI.Responses.Stream do
   end
 
   def stream(options) when is_map(options) do
-    options = Map.to_list(options)
-    stream(options)
+    Stream.resource(
+      fn -> start_streaming(options) end,
+      &stream_next/1,
+      &cleanup_stream/1
+    )
   end
 
   defp start_streaming(options) do
@@ -313,7 +317,7 @@ defmodule OpenAI.Responses.Stream do
         schema: %{presidents: {:array, %{name: :string, birth_year: :integer}}}
       )
       |> Responses.Stream.json_events()
-      |> Enum.into([])
+      |> Enum.to_list()
 
       # Process events as they arrive
       Responses.stream(

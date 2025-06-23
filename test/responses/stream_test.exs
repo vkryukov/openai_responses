@@ -117,7 +117,7 @@ defmodule OpenAI.Responses.StreamTest do
           schema: %{test: :boolean}
         )
         |> Responses.Stream.json_events()
-        |> Enum.into([])
+        |> Enum.to_list()
 
       assert :start_object in events
       assert {:string, "test"} in events
@@ -155,7 +155,7 @@ defmodule OpenAI.Responses.StreamTest do
           }
         )
         |> Responses.Stream.json_events()
-        |> Enum.into([])
+        |> Enum.to_list()
 
       # Should start with object
       assert :start_object in events
@@ -209,7 +209,7 @@ defmodule OpenAI.Responses.StreamTest do
           schema: %{name: :string, age: :integer}
         )
         |> Responses.Stream.json_events()
-        |> Enum.into([])
+        |> Enum.to_list()
 
       assert :start_object in events
       assert {:string, "name"} in events
@@ -233,7 +233,7 @@ defmodule OpenAI.Responses.StreamTest do
           }
         )
         |> Responses.Stream.json_events()
-        |> Enum.into([])
+        |> Enum.to_list()
 
       # Count object markers
       start_objects = events |> Enum.count(&(&1 == :start_object))
@@ -254,7 +254,7 @@ defmodule OpenAI.Responses.StreamTest do
           schema: %{test: :boolean}
         )
         |> Responses.Stream.json_events()
-        |> Enum.into([])
+        |> Enum.to_list()
 
       # The exact order should allow reconstruction
       expected_order = [

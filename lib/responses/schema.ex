@@ -146,6 +146,9 @@ defmodule OpenAI.Responses.Schema do
 
       # Lists with exactly 2 elements - treat as [type, options]
       [type, opts] when (is_atom(type) or is_binary(type)) and (is_list(opts) or is_map(opts)) ->
+        # Handle nested list case like [:string, [:max_items, 2]]
+        opts = normalize_nested_options(opts)
+        
         if type in [:object, "object"] and is_map(opts) and Map.has_key?(opts, :properties) do
           # Special case for [:object, %{properties: ...}]
           properties = Map.get(opts, :properties)
@@ -184,6 +187,25 @@ defmodule OpenAI.Responses.Schema do
         raise ArgumentError, "Unsupported schema specification: #{inspect(spec)}"
     end
   end
+
+  # Handle nested list options like [:max_items, 2] -> [max_items: 2]
+  defp normalize_nested_options(opts) when is_list(opts) do
+    case opts do
+      # Single nested list like [:max_items, 2]
+      [[key, value]] when is_atom(key) or is_binary(key) ->
+        [{key, value}]
+      
+      # Direct list like [:max_items, 2] that's not a keyword list
+      [key, value] when (is_atom(key) or is_binary(key)) and not is_tuple(value) ->
+        [{key, value}]
+      
+      # Already a proper keyword list or other format
+      _ ->
+        opts
+    end
+  end
+  
+  defp normalize_nested_options(opts), do: opts
 
   defp normalize_type_with_options(type, opts) do
     base = %{"type" => to_string(type)}

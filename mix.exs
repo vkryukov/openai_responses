@@ -32,7 +32,9 @@ defmodule OpenAI.Responses.MixProject do
       {:jason, "~> 1.4"},
       {:jaxon, "~> 2.0"},
       {:decimal, "~> 2.0"},
-      {:ex_doc, "~> 0.29", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.29", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.1", only: [:dev, :test]}
     ]
   end
 
