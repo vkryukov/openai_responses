@@ -3,6 +3,16 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.5.2
+
+### Changed
+- **Internal refactoring** - Improved input handling to consistently accept both maps and keyword lists with atom or string keys across all functions
+- **Documentation** - Added comprehensive documentation for the `:schema` option in `create/1` function, explaining how to use structured output with examples
+
+### Fixed
+- Fixed Dialyzer issues
+- Fixed Credo warnings for code quality
+
 ## 0.5.1
 
 ### Added

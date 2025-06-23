@@ -75,6 +75,46 @@ defmodule OpenAI.Responses do
       # String shorthand
       Responses.create("Hello")
 
+  ## Structured Output with :schema
+
+  Pass a `schema:` option to get structured JSON output from the model.
+  The schema is defined using a simple Elixir syntax that is converted to JSON Schema format.
+
+  Both maps and keyword lists with atom or string keys are accepted for all options:
+
+      # Using a map with atom keys
+      Responses.create(%{
+        input: "Extract user info from: John Doe, username @johndoe, john@example.com",
+        schema: %{
+          name: :string,
+          username: {:string, pattern: "^@[a-zA-Z0-9_]+$"},
+          email: {:string, format: "email"}
+        }
+      })
+
+      # Using a keyword list
+      Responses.create(
+        input: "Extract product details",
+        schema: [
+          product_name: :string,
+          price: :number,
+          in_stock: :boolean,
+          tags: {:array, :string}
+        ]
+      )
+
+      # Mixed keys (atoms and strings) are supported
+      Responses.create(%{
+        "input" => "Analyze this data",
+        :schema => %{
+          "result" => :string,
+          :confidence => :number
+        }
+      })
+
+  The response will include a `parsed` field with the extracted structured data.
+  See `OpenAI.Responses.Schema` for the full schema syntax documentation.
+
   ## Streaming
 
   Pass a `stream:` option with a callback function to stream the response.
