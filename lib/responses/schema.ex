@@ -123,69 +123,108 @@ defmodule OpenAI.Responses.Schema do
 
   # Normalize various input formats to a standard map format
   defp normalize_spec(spec) do
-    case spec do
+    cond do
       # Simple types
-      type when is_atom(type) or is_binary(type) ->
-        %{"type" => to_string(type)}
+      simple_type?(spec) ->
+        normalize_simple_type(spec)
 
-      # Arrays - both {:array, ...} and {"array", ...}
-      {array_type, item_spec} when array_type in [:array, "array"] ->
-        %{"type" => "array", "items" => normalize_spec(item_spec)}
+      # Arrays
+      array_spec?(spec) ->
+        normalize_array_spec(spec)
 
-      # Arrays in list format - [:array, item_spec]
-      [array_type, item_spec] when array_type in [:array, "array"] ->
-        %{"type" => "array", "items" => normalize_spec(item_spec)}
+      # Union types (anyOf)
+      anyof_spec?(spec) ->
+        normalize_anyof_spec(spec)
 
-      # anyOf - union types
-      {anyof_type, specs} when anyof_type in [:anyOf, "anyOf"] and is_list(specs) ->
-        %{"anyOf" => Enum.map(specs, &normalize_spec/1)}
+      # Type with options
+      type_with_options?(spec) ->
+        normalize_type_with_options_spec(spec)
 
-      # anyOf in list format - [:anyOf, [specs...]]
-      [anyof_type, specs] when anyof_type in [:anyOf, "anyOf"] and is_list(specs) ->
-        %{"anyOf" => Enum.map(specs, &normalize_spec/1)}
-
-      # Lists with exactly 2 elements - treat as [type, options]
-      [type, opts] when (is_atom(type) or is_binary(type)) and (is_list(opts) or is_map(opts)) ->
-        # Handle nested list case like [:string, [:max_items, 2]]
-        opts = normalize_nested_options(opts)
-        
-        if type in [:object, "object"] and is_map(opts) and Map.has_key?(opts, :properties) do
-          # Special case for [:object, %{properties: ...}]
-          properties = Map.get(opts, :properties)
-          normalize_object_spec(Enum.to_list(properties))
-        else
-          normalize_type_with_options(type, opts)
-        end
-
-      # Tuples with type and options
-      {type, opts} when (is_atom(type) or is_binary(type)) and is_list(opts) ->
-        if type in [:object, "object"] and Keyword.has_key?(opts, :properties) do
-          # Special case for {:object, properties: ...}
-          properties = Keyword.get(opts, :properties)
-          normalize_object_spec(Enum.to_list(properties))
-        else
-          normalize_type_with_options(type, opts)
-        end
-
-      # Object specifications - keyword lists or lists of tuples
-      list when is_list(list) and list != [] and is_tuple(hd(list)) ->
-        normalize_object_spec(list)
-        
-      # Empty list
-      [] ->
-        normalize_object_spec([])
+      # Lists (keyword lists or empty)
+      is_list(spec) ->
+        normalize_list_spec(spec)
 
       # Maps are object specifications
-      map when is_map(map) ->
-        # Convert to sorted keyword list for consistent ordering
-        map
-        |> Enum.sort_by(fn {key, _} -> to_string(key) end)
-        |> normalize_object_spec()
+      is_map(spec) ->
+        normalize_map_spec(spec)
 
-      # Fallback for edge cases
-      _ ->
+      # Fallback
+      true ->
         raise ArgumentError, "Unsupported schema specification: #{inspect(spec)}"
     end
+  end
+
+  # Type checking helpers
+  defp simple_type?(type) when is_atom(type) or is_binary(type), do: true
+  defp simple_type?(_), do: false
+
+  defp array_spec?({type, _}) when type in [:array, "array"], do: true
+  defp array_spec?([type, _]) when type in [:array, "array"], do: true
+  defp array_spec?(_), do: false
+
+  defp anyof_spec?({type, specs}) when type in [:anyOf, "anyOf"] and is_list(specs), do: true
+  defp anyof_spec?([type, specs]) when type in [:anyOf, "anyOf"] and is_list(specs), do: true
+  defp anyof_spec?(_), do: false
+
+  defp type_with_options?([type, opts]) when (is_atom(type) or is_binary(type)) and (is_list(opts) or is_map(opts)), do: true
+  defp type_with_options?({type, opts}) when (is_atom(type) or is_binary(type)) and is_list(opts), do: true
+  defp type_with_options?(_), do: false
+
+  # Normalization helpers
+  defp normalize_simple_type(type) do
+    %{"type" => to_string(type)}
+  end
+
+  defp normalize_array_spec({_array_type, item_spec}) do
+    %{"type" => "array", "items" => normalize_spec(item_spec)}
+  end
+
+  defp normalize_array_spec([_array_type, item_spec]) do
+    %{"type" => "array", "items" => normalize_spec(item_spec)}
+  end
+
+  defp normalize_anyof_spec({_anyof_type, specs}) do
+    %{"anyOf" => Enum.map(specs, &normalize_spec/1)}
+  end
+
+  defp normalize_anyof_spec([_anyof_type, specs]) do
+    %{"anyOf" => Enum.map(specs, &normalize_spec/1)}
+  end
+
+  defp normalize_type_with_options_spec([type, opts]) do
+    opts = normalize_nested_options(opts)
+    handle_type_with_options(type, opts, &Map.has_key?/2, &Map.get/2)
+  end
+
+  defp normalize_type_with_options_spec({type, opts}) do
+    handle_type_with_options(type, opts, &Keyword.has_key?/2, &Keyword.get/2)
+  end
+
+  defp handle_type_with_options(type, opts, has_key_fn, get_fn) do
+    if type in [:object, "object"] and has_key_fn.(opts, :properties) do
+      properties = get_fn.(opts, :properties)
+      normalize_object_spec(Enum.to_list(properties))
+    else
+      normalize_type_with_options(type, opts)
+    end
+  end
+
+  defp normalize_list_spec([]) do
+    normalize_object_spec([])
+  end
+
+  defp normalize_list_spec(list) when is_tuple(hd(list)) do
+    normalize_object_spec(list)
+  end
+
+  defp normalize_list_spec(spec) do
+    raise ArgumentError, "Unsupported schema specification: #{inspect(spec)}"
+  end
+
+  defp normalize_map_spec(map) do
+    map
+    |> Enum.sort_by(fn {key, _} -> to_string(key) end)
+    |> normalize_object_spec()
   end
 
   # Handle nested list options like [:max_items, 2] -> [max_items: 2]

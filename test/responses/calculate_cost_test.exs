@@ -115,7 +115,7 @@ defmodule OpenAI.Responses.CalculateCostTest do
         body: %{
           "model" => "o1-pro-2025-03-19",
           "usage" => %{
-            "input_tokens" => 10000,
+            "input_tokens" => 10_000,
             "output_tokens" => 5000,
             "input_tokens_details" => %{"cached_tokens" => 0}
           }
@@ -266,8 +266,8 @@ defmodule OpenAI.Responses.CalculateCostTest do
           "model" => "o3-2025-04-16",
           "usage" => %{
             "input_tokens" => 100_000,
-            "output_tokens" => 50000,
-            "input_tokens_details" => %{"cached_tokens" => 40000}
+            "output_tokens" => 50_000,
+            "input_tokens_details" => %{"cached_tokens" => 40_000}
           }
         }
       }

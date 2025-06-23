@@ -27,19 +27,29 @@ defmodule OpenAI.Responses.Response do
   def extract_text(response) do
     if response.text == nil do
       text =
-        Map.get(response.body, "output", [])
-        |> Enum.filter(fn output -> output["role"] == "assistant" end)
-        |> Enum.flat_map(fn output ->
-          Map.get(output, "content", [])
-          |> Enum.filter(fn content -> content["type"] == "output_text" end)
-          |> Enum.map(fn content -> content["text"] end)
-        end)
+        response.body
+        |> Map.get("output", [])
+        |> extract_assistant_outputs()
+        |> extract_text_content()
         |> Enum.join("\n")
 
       %{response | text: text}
     else
       response
     end
+  end
+
+  defp extract_assistant_outputs(outputs) do
+    Enum.filter(outputs, fn output -> output["role"] == "assistant" end)
+  end
+
+  defp extract_text_content(outputs) do
+    Enum.flat_map(outputs, fn output ->
+      output
+      |> Map.get("content", [])
+      |> Enum.filter(fn content -> content["type"] == "output_text" end)
+      |> Enum.map(fn content -> content["text"] end)
+    end)
   end
 
   @doc """

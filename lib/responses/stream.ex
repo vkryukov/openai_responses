@@ -78,17 +78,7 @@ defmodule OpenAI.Responses.Stream do
     {:ok, agent} = Agent.start_link(fn -> nil end)
 
     # Wrap the callback to capture response.completed event
-    wrapped_callback = fn result ->
-      case result do
-        {:ok, %{event: "response.completed", data: data}} ->
-          # Store the response data
-          Agent.update(agent, fn _ -> data["response"] end)
-          callback.(result)
-
-        _ ->
-          callback.(result)
-      end
-    end
+    wrapped_callback = wrap_callback_with_agent(callback, agent)
 
     # Ensure options are normalized and add stream: true
     normalized_options = 
@@ -133,24 +123,34 @@ defmodule OpenAI.Responses.Stream do
     :ok
   end
 
+  defp wrap_callback_with_agent(callback, agent) do
+    fn result ->
+      handle_stream_result(result, callback, agent)
+    end
+  end
+
+  defp handle_stream_result({:ok, %{event: "response.completed", data: data}} = result, callback, agent) do
+    # Store the response data
+    Agent.update(agent, fn _ -> data["response"] end)
+    callback.(result)
+  end
+
+  defp handle_stream_result(result, callback, _agent) do
+    callback.(result)
+  end
+
   defp parse_stream_chunk(chunk) do
-    case String.split(chunk, "\n", parts: 2) do
-      [event, data] ->
-        if String.starts_with?(event, "event: ") && String.starts_with?(data, "data: ") do
-          data = String.replace_prefix(data, "data: ", "") |> String.trim()
-          event = String.replace_prefix(event, "event: ", "") |> String.trim()
-
-          case Jason.decode(data) do
-            {:ok, parsed} ->
-              {:ok, %{event: event, data: parsed}}
-
-            {:error, _} ->
-              {:error, {:json_decode_error, data}}
-          end
-        else
-          {:error, {:invalid_chunk_format, chunk}}
-        end
-
+    with [event, data] <- String.split(chunk, "\n", parts: 2),
+         true <- String.starts_with?(event, "event: ") && String.starts_with?(data, "data: "),
+         event <- String.replace_prefix(event, "event: ", "") |> String.trim(),
+         data <- String.replace_prefix(data, "data: ", "") |> String.trim(),
+         {:ok, parsed} <- Jason.decode(data) do
+      {:ok, %{event: event, data: parsed}}
+    else
+      {:error, _} ->
+        {:error, {:json_decode_error, chunk}}
+      false ->
+        {:error, {:invalid_chunk_format, chunk}}
       _ ->
         {:error, {:invalid_chunk_structure, chunk}}
     end
