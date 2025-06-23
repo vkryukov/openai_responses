@@ -44,7 +44,7 @@ defmodule OpenAI.Responses.Internal do
 
   defp normalize_value(value) when is_list(value) do
     # Check if it's a keyword list (has at least one tuple)
-    if is_list(value) and value != [] and is_tuple(hd(value)) do
+    if value != [] and is_tuple(hd(value)) do
       # Try to convert as keyword list
       try do
         normalize_to_string_keys(value)

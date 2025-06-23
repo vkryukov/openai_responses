@@ -243,7 +243,7 @@ defmodule OpenAI.Responses do
   end
 
   def stream(options) when is_map(options) do
-    stream(options)
+    Responses.Stream.stream(options)
   end
 
   def stream(input) when is_binary(input) do
