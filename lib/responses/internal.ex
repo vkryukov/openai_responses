@@ -10,7 +10,7 @@ defmodule OpenAI.Responses.Internal do
   def prepare_payload(options) do
     # Normalize everything to maps with string keys
     options = normalize_to_string_keys(options)
-    
+
     {schema, options} = Map.pop(options, "schema")
 
     options =

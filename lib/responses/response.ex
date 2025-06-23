@@ -144,12 +144,15 @@ defmodule OpenAI.Responses.Response do
 
       :error ->
         # Return zero costs when pricing is not available
-        %{response | cost: %{
-          input_cost: Decimal.new(0),
-          output_cost: Decimal.new(0),
-          total_cost: Decimal.new(0),
-          cached_discount: Decimal.new(0)
-        }}
+        %{
+          response
+          | cost: %{
+              input_cost: Decimal.new(0),
+              output_cost: Decimal.new(0),
+              total_cost: Decimal.new(0),
+              cached_discount: Decimal.new(0)
+            }
+        }
     end
   end
 

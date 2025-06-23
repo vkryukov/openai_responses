@@ -322,18 +322,21 @@ defmodule OpenAI.Responses.ResponseTest do
       }
 
       result = Response.extract_function_calls(response)
-      
+
       assert length(result.function_calls) == 2
+
       assert Enum.at(result.function_calls, 0) == %{
-        name: "get_weather",
-        call_id: "call_12345xyz",
-        arguments: %{"location" => "Paris, France"}
-      }
+               name: "get_weather",
+               call_id: "call_12345xyz",
+               arguments: %{"location" => "Paris, France"}
+             }
+
       assert Enum.at(result.function_calls, 1) == %{
-        name: "get_weather",
-        call_id: "call_67890abc",
-        arguments: %{"location" => "Bogotá, Colombia"}
-      }
+               name: "get_weather",
+               call_id: "call_67890abc",
+               arguments: %{"location" => "Bogotá, Colombia"}
+             }
+
       assert result.parse_error == nil
     end
 
@@ -346,24 +349,26 @@ defmodule OpenAI.Responses.ResponseTest do
               "call_id" => "call_99999def",
               "type" => "function_call",
               "name" => "send_email",
-              "arguments" => "{\"to\":\"bob@email.com\",\"body\":\"Hi bob\",\"options\":{\"priority\":\"high\",\"delay\":30}}"
+              "arguments" =>
+                "{\"to\":\"bob@email.com\",\"body\":\"Hi bob\",\"options\":{\"priority\":\"high\",\"delay\":30}}"
             }
           ]
         }
       }
 
       result = Response.extract_function_calls(response)
-      
+
       assert length(result.function_calls) == 1
+
       assert Enum.at(result.function_calls, 0) == %{
-        name: "send_email",
-        call_id: "call_99999def",
-        arguments: %{
-          "to" => "bob@email.com",
-          "body" => "Hi bob",
-          "options" => %{"priority" => "high", "delay" => 30}
-        }
-      }
+               name: "send_email",
+               call_id: "call_99999def",
+               arguments: %{
+                 "to" => "bob@email.com",
+                 "body" => "Hi bob",
+                 "options" => %{"priority" => "high", "delay" => 30}
+               }
+             }
     end
 
     test "handles invalid JSON in function call arguments" do
@@ -389,14 +394,15 @@ defmodule OpenAI.Responses.ResponseTest do
       }
 
       result = Response.extract_function_calls(response)
-      
+
       assert length(result.function_calls) == 1
+
       assert Enum.at(result.function_calls, 0) == %{
-        name: "valid_call",
-        call_id: "call_valid",
-        arguments: %{"valid" => "json"}
-      }
-      
+               name: "valid_call",
+               call_id: "call_valid",
+               arguments: %{"valid" => "json"}
+             }
+
       assert is_map(result.parse_error)
       assert Map.has_key?(result.parse_error, :function_calls)
       assert length(result.parse_error.function_calls) == 1
@@ -428,7 +434,7 @@ defmodule OpenAI.Responses.ResponseTest do
       }
 
       result = Response.extract_function_calls(response)
-      
+
       assert length(result.function_calls) == 1
       assert Enum.at(result.function_calls, 0).name == "get_weather"
     end
@@ -472,7 +478,7 @@ defmodule OpenAI.Responses.ResponseTest do
       }
 
       result = Response.extract_function_calls(response)
-      
+
       # Should preserve existing function_calls
       assert length(result.function_calls) == 1
       assert Enum.at(result.function_calls, 0).name == "existing"
@@ -495,7 +501,7 @@ defmodule OpenAI.Responses.ResponseTest do
       }
 
       result = Response.extract_function_calls(response)
-      
+
       assert result.parse_error.json == "existing json error"
       assert Map.has_key?(result.parse_error, :function_calls)
       assert length(result.parse_error.function_calls) == 1

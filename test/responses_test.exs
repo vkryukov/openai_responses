@@ -144,10 +144,11 @@ defmodule OpenAI.ResponsesTest do
     initial_response = Responses.create!("Say hello")
 
     # Create follow-up with map options
-    follow_up_response = Responses.create!(initial_response, %{
-      input: "Say goodbye in exactly two words",
-      temperature: 0.5
-    })
+    follow_up_response =
+      Responses.create!(initial_response, %{
+        input: "Say goodbye in exactly two words",
+        temperature: 0.5
+      })
 
     assert String.split(follow_up_response.text, " ") |> Enum.count() == 2
     assert follow_up_response.body["previous_response_id"] == initial_response.body["id"]
@@ -198,7 +199,7 @@ defmodule OpenAI.ResponsesTest do
     # Default model is gpt-4.1-mini, not gpt-4o-mini
     assert follow_up_response.body["model"] =~ ~r/gpt-4\.1-mini/
     refute follow_up_response.body["model"] =~ ~r/gpt-4o-mini/
-    
+
     # Verify it maintains context from previous response
     assert follow_up_response.body["previous_response_id"] == initial_response.body["id"]
   end

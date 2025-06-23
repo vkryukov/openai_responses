@@ -166,8 +166,13 @@ defmodule OpenAI.Responses.Schema do
   defp anyof_spec?([type, specs]) when type in [:anyOf, "anyOf"] and is_list(specs), do: true
   defp anyof_spec?(_), do: false
 
-  defp type_with_options?([type, opts]) when (is_atom(type) or is_binary(type)) and (is_list(opts) or is_map(opts)), do: true
-  defp type_with_options?({type, opts}) when (is_atom(type) or is_binary(type)) and is_list(opts), do: true
+  defp type_with_options?([type, opts])
+       when (is_atom(type) or is_binary(type)) and (is_list(opts) or is_map(opts)),
+       do: true
+
+  defp type_with_options?({type, opts}) when (is_atom(type) or is_binary(type)) and is_list(opts),
+    do: true
+
   defp type_with_options?(_), do: false
 
   # Normalization helpers
@@ -233,25 +238,25 @@ defmodule OpenAI.Responses.Schema do
       # Single nested list like [:max_items, 2]
       [[key, value]] when is_atom(key) or is_binary(key) ->
         [{key, value}]
-      
+
       # Direct list like [:max_items, 2] that's not a keyword list
       [key, value] when (is_atom(key) or is_binary(key)) and not is_tuple(value) ->
         [{key, value}]
-      
+
       # Already a proper keyword list or other format
       _ ->
         opts
     end
   end
-  
+
   defp normalize_nested_options(opts), do: opts
 
   defp normalize_type_with_options(type, opts) do
     base = %{"type" => to_string(type)}
-    
+
     # Convert options to map if they're a keyword list
     opts_map = if is_list(opts), do: Map.new(opts), else: opts
-    
+
     # Merge options into base, converting keys to strings
     Enum.reduce(opts_map, base, fn {key, value}, acc ->
       Map.put(acc, to_string(key), value)
@@ -261,7 +266,7 @@ defmodule OpenAI.Responses.Schema do
   defp normalize_object_spec(spec) do
     properties =
       spec
-      |> Enum.map(fn {name, child_spec} -> 
+      |> Enum.map(fn {name, child_spec} ->
         {to_string(name), normalize_spec(child_spec)}
       end)
       |> Map.new()
@@ -291,7 +296,11 @@ defmodule OpenAI.Responses.Schema do
     }
   end
 
-  defp build_from_normalized(%{"type" => "object", "properties" => properties, "required" => required}) do
+  defp build_from_normalized(%{
+         "type" => "object",
+         "properties" => properties,
+         "required" => required
+       }) do
     built_properties =
       properties
       |> Enum.map(fn {name, prop} -> {name, build_from_normalized(prop)} end)

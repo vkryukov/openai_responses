@@ -81,7 +81,7 @@ defmodule OpenAI.Responses.Stream do
     wrapped_callback = wrap_callback_with_agent(callback, agent)
 
     # Ensure options are normalized and add stream: true
-    normalized_options = 
+    normalized_options =
       options
       |> Internal.prepare_payload()
       |> Map.put("stream", true)
@@ -129,7 +129,11 @@ defmodule OpenAI.Responses.Stream do
     end
   end
 
-  defp handle_stream_result({:ok, %{event: "response.completed", data: data}} = result, callback, agent) do
+  defp handle_stream_result(
+         {:ok, %{event: "response.completed", data: data}} = result,
+         callback,
+         agent
+       ) do
     # Store the response data
     Agent.update(agent, fn _ -> data["response"] end)
     callback.(result)
@@ -149,8 +153,10 @@ defmodule OpenAI.Responses.Stream do
     else
       {:error, _} ->
         {:error, {:json_decode_error, chunk}}
+
       false ->
         {:error, {:invalid_chunk_format, chunk}}
+
       _ ->
         {:error, {:invalid_chunk_structure, chunk}}
     end

@@ -426,7 +426,15 @@ defmodule OpenAI.Responses.SchemaTest do
                "description" => "User name"
              }
 
-      assert get_in(result, ["schema", "properties", "user", "properties", "profile", "properties", "age"]) == %{
+      assert get_in(result, [
+               "schema",
+               "properties",
+               "user",
+               "properties",
+               "profile",
+               "properties",
+               "age"
+             ]) == %{
                "type" => "integer",
                "minimum" => 0
              }
@@ -565,17 +573,24 @@ defmodule OpenAI.Responses.SchemaTest do
     test "converts anyOf with complex types" do
       result =
         Schema.build_output(%{
-          item: {:anyOf, [
-            %{
-              name: {:string, description: "The name of the user"},
-              age: {:number, description: "The age of the user"}
-            },
-            %{
-              number: {:string, description: "The number of the address. Eg. for 123 main st, this would be 123"},
-              street: {:string, description: "The street name. Eg. for 123 main st, this would be main st"},
-              city: {:string, description: "The city of the address"}
-            }
-          ]}
+          item:
+            {:anyOf,
+             [
+               %{
+                 name: {:string, description: "The name of the user"},
+                 age: {:number, description: "The age of the user"}
+               },
+               %{
+                 number:
+                   {:string,
+                    description:
+                      "The number of the address. Eg. for 123 main st, this would be 123"},
+                 street:
+                   {:string,
+                    description: "The street name. Eg. for 123 main st, this would be main st"},
+                 city: {:string, description: "The city of the address"}
+               }
+             ]}
         })
 
       assert result["schema"]["properties"]["item"] == %{
@@ -600,11 +615,13 @@ defmodule OpenAI.Responses.SchemaTest do
                    "properties" => %{
                      "number" => %{
                        "type" => "string",
-                       "description" => "The number of the address. Eg. for 123 main st, this would be 123"
+                       "description" =>
+                         "The number of the address. Eg. for 123 main st, this would be 123"
                      },
                      "street" => %{
                        "type" => "string",
-                       "description" => "The street name. Eg. for 123 main st, this would be main st"
+                       "description" =>
+                         "The street name. Eg. for 123 main st, this would be main st"
                      },
                      "city" => %{
                        "type" => "string",
@@ -621,11 +638,13 @@ defmodule OpenAI.Responses.SchemaTest do
     test "converts anyOf with array types" do
       result =
         Schema.build_output(%{
-          data: {:anyOf, [
-            :string,
-            {:array, :string},
-            {:array, %{id: :number, name: :string}}
-          ]}
+          data:
+            {:anyOf,
+             [
+               :string,
+               {:array, :string},
+               {:array, %{id: :number, name: :string}}
+             ]}
         })
 
       assert result["schema"]["properties"]["data"] == %{
@@ -683,11 +702,13 @@ defmodule OpenAI.Responses.SchemaTest do
     test "converts nested anyOf" do
       result =
         Schema.build_output(%{
-          complex: {:anyOf, [
-            :null,
-            {:anyOf, [:string, :number]},
-            %{type: :string, value: {:anyOf, [:number, :boolean]}}
-          ]}
+          complex:
+            {:anyOf,
+             [
+               :null,
+               {:anyOf, [:string, :number]},
+               %{type: :string, value: {:anyOf, [:number, :boolean]}}
+             ]}
         })
 
       assert result["schema"]["properties"]["complex"] == %{

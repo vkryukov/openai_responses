@@ -148,7 +148,7 @@ defmodule OpenAI.Responses do
   def create(options) when is_list(options) or is_map(options) do
     # Extract stream callback (helper automatically checks both atom and string keys)
     stream_callback = get_option(options, :stream)
-    
+
     result =
       if stream_callback do
         # Handle streaming - pass options directly
@@ -189,7 +189,7 @@ defmodule OpenAI.Responses do
   def create(%Response{} = previous_response, options) when is_list(options) or is_map(options) do
     # Convert to map for easier manipulation
     options_map = if is_list(options), do: Map.new(options), else: options
-    
+
     # Add previous_response_id
     options_map = Map.put(options_map, :previous_response_id, previous_response.body["id"])
 
@@ -245,7 +245,7 @@ defmodule OpenAI.Responses do
   Stream a response from the OpenAI API as an Enumerable.
 
   Returns a Stream that yields chunks with `event` and `data` keys.
-  
+
   Options can be provided as either a keyword list or a map.
 
   ## Examples
@@ -611,6 +611,7 @@ defmodule OpenAI.Responses do
         rescue
           ArgumentError -> nil
         end
+
       value ->
         value
     end
