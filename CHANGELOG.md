@@ -3,6 +3,11 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.5.3
+
+### Fixed
+- **Duplicate assistant response handling** - Fixed an issue where the OpenAI API sometimes returns multiple nearly identical assistant responses by only taking the first assistant response in `Response.extract_text/1`
+
 ## 0.5.2
 
 ### Changed

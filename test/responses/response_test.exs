@@ -24,35 +24,6 @@ defmodule OpenAI.Responses.ResponseTest do
       assert result.text == "Hello, world!"
     end
 
-    test "extracts text from multiple output_text responses" do
-      response = %Response{
-        body: %{
-          "output" => [
-            %{
-              "role" => "assistant",
-              "content" => [
-                %{
-                  "type" => "output_text",
-                  "text" => "First message"
-                }
-              ]
-            },
-            %{
-              "role" => "assistant",
-              "content" => [
-                %{
-                  "type" => "output_text",
-                  "text" => "Second message"
-                }
-              ]
-            }
-          ]
-        }
-      }
-
-      result = Response.extract_text(response)
-      assert result.text == "First message\nSecond message"
-    end
 
     test "ignores responses that are not from an assistant" do
       response = %Response{
@@ -91,6 +62,45 @@ defmodule OpenAI.Responses.ResponseTest do
 
       result = Response.extract_text(response)
       assert result.text == "Assistant message"
+    end
+
+    test "only takes the first assistant response when duplicates exist" do
+      response = %Response{
+        body: %{
+          "output" => [
+            %{
+              "role" => "assistant",
+              "content" => [
+                %{
+                  "type" => "output_text",
+                  "text" => "First assistant response"
+                }
+              ]
+            },
+            %{
+              "role" => "assistant",
+              "content" => [
+                %{
+                  "type" => "output_text",
+                  "text" => "Duplicate assistant response"
+                }
+              ]
+            },
+            %{
+              "role" => "assistant",
+              "content" => [
+                %{
+                  "type" => "output_text",
+                  "text" => "Another duplicate"
+                }
+              ]
+            }
+          ]
+        }
+      }
+
+      result = Response.extract_text(response)
+      assert result.text == "First assistant response"
     end
 
     test "ignores content that is not output_text type" do

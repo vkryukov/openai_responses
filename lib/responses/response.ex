@@ -23,6 +23,9 @@ defmodule OpenAI.Responses.Response do
 
   @doc """
   Extract the text from the response body.
+  
+  Only extracts text from the first assistant response to handle cases where 
+  the API returns duplicate assistant responses.
   """
   def extract_text(response) do
     if response.text == nil do
@@ -41,6 +44,7 @@ defmodule OpenAI.Responses.Response do
 
   defp extract_assistant_outputs(outputs) do
     Enum.filter(outputs, fn output -> output["role"] == "assistant" end)
+    |> Enum.take(1)
   end
 
   defp extract_text_content(outputs) do
