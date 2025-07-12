@@ -103,6 +103,17 @@ defmodule OpenAI.Responses do
         ]
       )
 
+      # Arrays at the root level (new in 0.6.0)
+      Responses.create(
+        input: "List 3 US presidents with facts",
+        schema: {:array, %{
+          name: :string,
+          birth_year: :integer,
+          achievements: {:array, :string}
+        }}
+      )
+      # Returns an array directly in response.parsed
+
       # Mixed keys (atoms and strings) are supported
       Responses.create(%{
         "input" => "Analyze this data",

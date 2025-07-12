@@ -9,7 +9,7 @@ Add `openai_responses` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:openai_responses, "~> 0.5.2"}
+    {:openai_responses, "~> 0.6.0"}
   ]
 end
 ```
@@ -102,6 +102,31 @@ Responses.stream(
 |> Responses.Stream.json_events()
 |> Enum.each(&IO.puts/1)
 ```
+
+### Array Schemas (New in 0.6.0)
+
+Arrays can now be used directly at the root level of schema definitions:
+
+```elixir
+# Define an array schema at the root level
+{:ok, response} = Responses.create(
+  input: "List 3 interesting facts about space exploration",
+  schema: {:array, %{
+    fact: :string,
+    year: {:integer, description: "Year of the event"},
+    significance: {:string, description: "Why this fact is important"}
+  }}
+)
+
+# The response.parsed will be an array directly:
+# [
+#   %{"fact" => "First satellite launch", "year" => 1957, "significance" => "Started the space age"},
+#   %{"fact" => "Moon landing", "year" => 1969, "significance" => "First humans on another celestial body"},
+#   %{"fact" => "ISS construction", "year" => 1998, "significance" => "Permanent human presence in space"}
+# ]
+```
+
+The library automatically handles OpenAI's requirement that the root level must be an object by wrapping and unwrapping arrays transparently.
 
 ### Cost Tracking with High Precision
 

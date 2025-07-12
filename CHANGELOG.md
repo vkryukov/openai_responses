@@ -3,6 +3,25 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.0
+
+### Added
+- **Automatic array wrapping for Structured Outputs** - Arrays can now be used at the root level of schema definitions. The library automatically wraps arrays in objects to comply with OpenAI's requirement that the root level must be an object, and unwraps them in the response:
+  ```elixir
+  Responses.create!(
+    input: "list facts about 3 US presidents", 
+    schema: {:array, %{
+      name: :string,
+      birth_year: :integer,
+      little_known_facts: {:array, {:string, max_items: 2}}
+    }}
+  )
+  # Returns an array directly, not wrapped in an object
+  ```
+  - `Schema.build_output/1` detects array schemas and wraps them in an object with an "items" property
+  - `Response.extract_json/1` detects wrapped arrays and automatically unwraps them
+  - Objects that naturally have an "items" property are not affected
+
 ## 0.5.3
 
 ### Fixed

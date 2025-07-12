@@ -4,9 +4,15 @@ defmodule OpenAI.Responses.Schema do
 
   Converts simple Elixir syntax into JSON Schema format for structured outputs and function parameters.
 
+  ## Array Support (New in 0.6.0)
+
+  Arrays can now be used at the root level of schema definitions. The library automatically
+  handles OpenAI's requirement that the root level must be an object by wrapping arrays
+  in a temporary object structure and unwrapping them in the response.
+
   ## Examples
 
-  ### Structured Output Schema
+  ### Structured Output Schema with Object
 
       iex> Responses.Schema.build_output(%{
       ...>   name: {:string, description: "The name of the user"},
@@ -39,6 +45,42 @@ defmodule OpenAI.Responses.Schema do
           "required" => ["name", "username", "email"]
         }
       }
+
+  ### Structured Output Schema with Array at Root
+
+      iex> Responses.Schema.build_output({:array, %{
+      ...>   title: :string,
+      ...>   completed: :boolean,
+      ...>   priority: {:integer, minimum: 1, maximum: 5}
+      ...> }})
+      %{
+        "name" => "data",
+        "type" => "json_schema",
+        "strict" => true,
+        "schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "items" => %{
+              "type" => "array",
+              "items" => %{
+                "type" => "object",
+                "properties" => %{
+                  "title" => %{"type" => "string"},
+                  "completed" => %{"type" => "boolean"},
+                  "priority" => %{"type" => "integer", "minimum" => 1, "maximum" => 5}
+                },
+                "additionalProperties" => false,
+                "required" => ["completed", "priority", "title"]
+              }
+            }
+          },
+          "additionalProperties" => false,
+          "required" => ["items"]
+        }
+      }
+
+  When using array schemas, the response will be automatically unwrapped so that
+  `response.parsed` contains the array directly, not wrapped in an object.
 
   ### Function Calling Tool
 
