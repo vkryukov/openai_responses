@@ -24,7 +24,6 @@ defmodule OpenAI.Responses.ResponseTest do
       assert result.text == "Hello, world!"
     end
 
-
     test "ignores responses that are not from an assistant" do
       response = %Response{
         body: %{

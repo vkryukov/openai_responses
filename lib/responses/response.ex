@@ -23,7 +23,7 @@ defmodule OpenAI.Responses.Response do
 
   @doc """
   Extract the text from the response body.
-  
+
   Only extracts text from the first assistant response to handle cases where 
   the API returns duplicate assistant responses.
   """
@@ -105,6 +105,8 @@ defmodule OpenAI.Responses.Response do
   Extract the data from the response body if it is a structured response.
 
   Automatically extracts the text from the response body if it is not already extracted.
+  If the schema was originally an array at the root level, it will be automatically
+  unwrapped from the temporary object wrapper.
   """
   def extract_json(response) do
     response = response |> extract_text()
@@ -112,6 +114,8 @@ defmodule OpenAI.Responses.Response do
     if structured_response?(response) do
       case Jason.decode(response.text) do
         {:ok, parsed} ->
+          # Check if we need to unwrap an array that was wrapped for OpenAI compatibility
+          parsed = maybe_unwrap_array(parsed, response)
           %{response | parsed: parsed}
 
         {:error, %Jason.DecodeError{} = error} ->
@@ -126,6 +130,29 @@ defmodule OpenAI.Responses.Response do
 
   defp structured_response?(response) do
     get_in(response.body, ["text", "format", "schema"]) != nil
+  end
+
+  defp maybe_unwrap_array(parsed, response) do
+    # Check if the schema indicates this was a wrapped array
+    schema = get_in(response.body, ["text", "format", "schema"])
+
+    if schema && is_wrapped_array_schema?(schema) do
+      # If it was wrapped, extract the items array
+      Map.get(parsed, "items", parsed)
+    else
+      parsed
+    end
+  end
+
+  defp is_wrapped_array_schema?(schema) do
+    # Check if this is our special wrapped array structure:
+    # An object with a single "items" property that contains an array
+    properties = schema["properties"] || %{}
+    required = schema["required"] || []
+
+    Map.keys(properties) == ["items"] &&
+      required == ["items"] &&
+      get_in(properties, ["items", "type"]) == "array"
   end
 
   @doc """

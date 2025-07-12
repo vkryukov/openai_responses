@@ -76,13 +76,41 @@ defmodule OpenAI.Responses.Schema do
 
   When using keyword lists, the order of fields is preserved in the required array.
   When using maps, fields are sorted alphabetically in the required array.
+
+  If the root schema is an array, it will be automatically wrapped in an object
+  to comply with OpenAI's Structured Outputs requirements.
   """
   def build_output(fields) do
+    # Handle array specs at the root level
+    schema =
+      if array_spec?(fields) do
+        build_property(fields)
+      else
+        build_schema(fields)
+      end
+
+    # Check if the root is an array and wrap it if necessary
+    schema =
+      case schema do
+        %{"type" => "array"} = array_schema ->
+          %{
+            "type" => "object",
+            "properties" => %{
+              "items" => array_schema
+            },
+            "additionalProperties" => false,
+            "required" => ["items"]
+          }
+
+        other ->
+          other
+      end
+
     %{
       "name" => "data",
       "type" => "json_schema",
       "strict" => true,
-      "schema" => build_schema(fields)
+      "schema" => schema
     }
   end
 
