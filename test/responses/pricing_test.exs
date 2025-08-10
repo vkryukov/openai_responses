@@ -22,7 +22,23 @@ defmodule OpenAI.Responses.PricingTest do
 
     test "returns nil for unknown models" do
       assert Pricing.get_pricing("unknown-model") == nil
-      assert Pricing.get_pricing("gpt-5") == nil
+    end
+
+    test "returns pricing for gpt-5 models" do
+      pricing1 = Pricing.get_pricing("gpt-5")
+      assert Decimal.equal?(pricing1.input, Decimal.new("1.25"))
+      assert Decimal.equal?(pricing1.cached_input, Decimal.new("0.125"))
+      assert Decimal.equal?(pricing1.output, Decimal.new("10.00"))
+
+      pricing2 = Pricing.get_pricing("gpt-5-mini")
+      assert Decimal.equal?(pricing2.input, Decimal.new("0.25"))
+      assert Decimal.equal?(pricing2.cached_input, Decimal.new("0.025"))
+      assert Decimal.equal?(pricing2.output, Decimal.new("2.00"))
+
+      pricing3 = Pricing.get_pricing("gpt-5-nano")
+      assert Decimal.equal?(pricing3.input, Decimal.new("0.05"))
+      assert Decimal.equal?(pricing3.cached_input, Decimal.new("0.005"))
+      assert Decimal.equal?(pricing3.output, Decimal.new("0.40"))
     end
 
     test "handles models without cached pricing" do

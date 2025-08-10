@@ -9,7 +9,7 @@ Add `openai_responses` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:openai_responses, "~> 0.6.0"}
+    {:openai_responses, "~> 0.6.1"}
   ]
 end
 ```

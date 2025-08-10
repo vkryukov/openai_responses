@@ -3,6 +3,15 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.1
+
+### Added
+- **GPT-5 model pricing support** - Added pricing information for the newly released GPT-5 model family:
+  - GPT-5: $1.25/$0.125/$10.00 per million tokens (input/cached/output)
+  - GPT-5-mini: $0.25/$0.025/$2.00 per million tokens
+  - GPT-5-nano: $0.05/$0.005/$0.40 per million tokens
+  - Includes support for all model variants (base models, dated versions, and chat-latest)
+
 ## 0.6.0
 
 ### Added
