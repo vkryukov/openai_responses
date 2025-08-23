@@ -3,6 +3,39 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.7.0
+
+### Added
+- **LLM Options Preservation in `create/2`** - When creating follow-up responses using `create/2` with a Response object, the following LLM options are now automatically preserved from the previous response unless explicitly overridden:
+  - `model` - The model used for generation
+  - `text` - Text generation settings including verbosity levels
+  - `reasoning` - Reasoning settings including effort levels (e.g., "low", "medium", "high")
+  
+  This makes it easier to maintain consistent generation settings across conversation chains:
+  ```elixir
+  # Initial response with specific settings
+  first = Responses.create!(
+    input: "Complex question",
+    model: "gpt-5-mini",
+    reasoning: %{effort: "high"},
+    text: %{verbosity: "low"}
+  )
+  
+  # Follow-up inherits all LLM settings
+  followup = Responses.create!(first, input: "Tell me more")
+  # Uses gpt-5-mini, high reasoning, and low verbosity
+  
+  # Partial override - only change reasoning
+  another = Responses.create!(first, 
+    input: "Another question",
+    reasoning: %{effort: "low"}
+  )
+  # Still uses gpt-5-mini and low verbosity, but with low reasoning
+  ```
+
+### Changed
+- **Refactored model preservation logic** - The model preservation functionality is now part of a more general LLM options preservation system, making the code more maintainable and extensible
+
 ## 0.6.1
 
 ### Added

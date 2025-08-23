@@ -176,6 +176,135 @@ defmodule OpenAI.ResponsesTest do
   end
 
   @tag :api
+  test "create/2 preserves reasoning effort from previous response when not explicitly provided" do
+    # Create initial response with high reasoning effort using gpt-5-mini
+    initial_response =
+      Responses.create!(
+        input: "What is 2+2?",
+        model: "gpt-5-mini",
+        reasoning: %{effort: "high"}
+      )
+
+    # Verify the initial response has reasoning settings
+    assert initial_response.body["reasoning"]["effort"] == "high"
+
+    # Create follow-up without specifying reasoning
+    follow_up_response = Responses.create!(initial_response, input: "What about 3+3?")
+
+    # The follow-up should preserve the reasoning effort
+    assert follow_up_response.body["reasoning"]["effort"] == "high"
+  end
+
+  @tag :api
+  test "create/2 allows overriding reasoning effort from previous response" do
+    # Create initial response with high reasoning effort using gpt-5-mini
+    initial_response =
+      Responses.create!(
+        input: "What is 2+2?",
+        model: "gpt-5-mini",
+        reasoning: %{effort: "high"}
+      )
+
+    # Create follow-up with different reasoning effort
+    follow_up_response =
+      Responses.create!(
+        initial_response,
+        input: "What about 3+3?",
+        reasoning: %{effort: "low"}
+      )
+
+    # The follow-up should use the explicitly provided reasoning effort
+    assert follow_up_response.body["reasoning"]["effort"] == "low"
+  end
+
+  @tag :api
+  test "create/2 preserves text verbosity from previous response when not explicitly provided" do
+    # Create initial response with specific verbosity using gpt-5-mini
+    initial_response =
+      Responses.create!(
+        input: "Explain addition",
+        model: "gpt-5-mini",
+        text: %{verbosity: "low"}
+      )
+
+    # Verify the initial response has text settings
+    assert initial_response.body["text"]["verbosity"] == "low"
+
+    # Create follow-up without specifying text settings
+    follow_up_response = Responses.create!(initial_response, input: "What about subtraction?")
+
+    # The follow-up should preserve the text verbosity
+    assert follow_up_response.body["text"]["verbosity"] == "low"
+  end
+
+  @tag :api
+  test "create/2 allows overriding text verbosity from previous response" do
+    # Create initial response with low verbosity using gpt-5-mini
+    initial_response =
+      Responses.create!(
+        input: "Explain addition",
+        model: "gpt-5-mini",
+        text: %{verbosity: "low"}
+      )
+
+    # Create follow-up with different verbosity
+    follow_up_response =
+      Responses.create!(
+        initial_response,
+        input: "What about multiplication?",
+        text: %{verbosity: "high"}
+      )
+
+    # The follow-up should use the explicitly provided verbosity
+    assert follow_up_response.body["text"]["verbosity"] == "high"
+  end
+
+  @tag :api
+  test "create/2 preserves multiple LLM options together" do
+    # Create initial response with multiple LLM options using gpt-5-mini
+    initial_response =
+      Responses.create!(
+        input: "Solve this problem",
+        model: "gpt-5-mini",
+        reasoning: %{effort: "high"},
+        text: %{verbosity: "low"}
+      )
+
+    # Create follow-up without specifying any LLM options
+    follow_up_response = Responses.create!(initial_response, input: "What about a harder problem?")
+
+    # All LLM options should be preserved
+    assert follow_up_response.body["model"] == initial_response.body["model"]
+    assert follow_up_response.body["reasoning"]["effort"] == "high"
+    assert follow_up_response.body["text"]["verbosity"] == "low"
+  end
+
+  @tag :api
+  test "create/2 allows partial override of LLM options" do
+    # Create initial response with multiple LLM options using gpt-5-mini
+    initial_response =
+      Responses.create!(
+        input: "Solve this problem",
+        model: "gpt-5-mini",
+        reasoning: %{effort: "high"},
+        text: %{verbosity: "low"}
+      )
+
+    # Create follow-up overriding only reasoning
+    follow_up_response =
+      Responses.create!(
+        initial_response,
+        input: "Another problem",
+        reasoning: %{effort: "medium"}
+      )
+
+    # Reasoning should be overridden, but model and text should be preserved
+    assert follow_up_response.body["model"] == initial_response.body["model"]
+    assert follow_up_response.body["reasoning"]["effort"] == "medium"
+    assert follow_up_response.body["text"]["verbosity"] == "low"
+  end
+
+  @tag :api
   test "create/1 with manual previous_response_id uses default model when no model specified" do
     # Create initial response with a specific model
     initial_response =

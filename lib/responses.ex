@@ -43,26 +43,30 @@ defmodule OpenAI.Responses do
   Otherwise, the argument is expected to be a keyword list or map of options that OpenAI expects,
   such as `input`, `model`, `temperature`, `max_tokens`, etc.
 
-  ## Model Behavior with previous_response_id
+  ## LLM Options Preservation with previous_response_id
 
   The OpenAI API always requires a model parameter, even when using `previous_response_id`.
 
   When using `create/1` with manual `previous_response_id`:
   - If no model is specified, the default model is used
-  - The model from the previous response is NOT automatically inherited
+  - LLM options (model, text, reasoning) from the previous response are NOT automatically inherited
 
   When using `create/2` with a Response object:
-  - The model from the previous response IS automatically inherited
-  - You can override it by explicitly specifying a different model
+  - LLM options (model, text, reasoning) from the previous response ARE automatically inherited
+  - You can override any of them by explicitly specifying different values
 
-      # Manual previous_response_id - uses default model if not specified
+      # Manual previous_response_id - uses defaults if not specified
       Responses.create(input: "Hello", previous_response_id: "resp_123")
 
-      # Manual previous_response_id - with explicit model
+      # Manual previous_response_id - with explicit options
       Responses.create(input: "Hello", previous_response_id: "resp_123", model: "gpt-4.1")
 
-      # Using create/2 - automatically inherits model from previous response
+      # Using create/2 - automatically inherits LLM options from previous response
       Responses.create(previous_response, input: "Hello")
+      
+      # Using create/2 - with reasoning effort preserved (requires model that supports reasoning)
+      first = Responses.create!(input: "Question", model: "gpt-5-mini", reasoning: %{effort: "high"})
+      followup = Responses.create!(first, input: "Follow-up")  # Inherits gpt-5-mini and high reasoning
 
   ## Examples
 
@@ -179,6 +183,9 @@ defmodule OpenAI.Responses do
     create(input: input)
   end
 
+  # Define LLM options that should be preserved across chained responses
+  @preserved_llm_options ["model", "text", "reasoning"]
+
   @doc """
   Create a response based on a previous response.
 
@@ -186,6 +193,13 @@ defmodule OpenAI.Responses do
   The previous response's ID is automatically included in the request.
 
   Options can be provided as either a keyword list or a map.
+
+  ## Preserved Options
+
+  The following options are automatically preserved from the previous response unless explicitly overridden:
+  - `model` - The model used for generation
+  - `text` - Text generation settings (including verbosity)
+  - `reasoning` - Reasoning settings (including effort level)
 
   ## Examples
 
@@ -196,6 +210,10 @@ defmodule OpenAI.Responses do
       
       # Using map
       {:ok, followup} = Responses.create(first, %{input: "Tell me more about its concurrency model"})
+      
+      # With reasoning effort preserved (requires model that supports reasoning)
+      {:ok, first} = Responses.create(input: "Complex question", model: "gpt-5-mini", reasoning: %{effort: "high"})
+      {:ok, followup} = Responses.create(first, input: "Follow-up")  # Inherits gpt-5-mini and high reasoning effort
   """
   def create(%Response{} = previous_response, options) when is_list(options) or is_map(options) do
     # Convert to map for easier manipulation
@@ -204,18 +222,32 @@ defmodule OpenAI.Responses do
     # Add previous_response_id
     options_map = Map.put(options_map, :previous_response_id, previous_response.body["id"])
 
-    # Preserve the model from the previous response if not explicitly provided
-    options_map =
-      if has_option?(options_map, :model) do
-        options_map
-      else
-        case previous_response.body["model"] do
-          nil -> options_map
-          model -> Map.put(options_map, :model, model)
-        end
-      end
+    # Preserve LLM options from the previous response if not explicitly provided
+    options_map = preserve_llm_options(options_map, previous_response.body)
 
     create(options_map)
+  end
+
+  # Helper to preserve LLM options from previous response
+  defp preserve_llm_options(options_map, previous_body) do
+    Enum.reduce(@preserved_llm_options, options_map, fn key, acc ->
+      preserve_single_option(acc, previous_body, key)
+    end)
+  end
+
+  defp preserve_single_option(options_map, previous_body, key) do
+    key_atom = String.to_atom(key)
+    
+    # Check if the option is already provided (as atom or string)
+    if has_option?(options_map, key_atom) do
+      options_map
+    else
+      # Get the value from the previous response body
+      case previous_body[key] do
+        nil -> options_map
+        value -> Map.put(options_map, key_atom, value)
+      end
+    end
   end
 
   @doc """

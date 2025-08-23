@@ -50,7 +50,7 @@ response =
       %{role: :developer, content: "Talk like a pirate."},
       %{role: :user, content: "Write me a haiku about Elixir"}
     ],
-    model: "o4-mini",
+    model: "gpt-5-mini",
     reasoning: %{effort: :low}
   )
 
